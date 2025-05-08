@@ -1,72 +1,127 @@
 <template>
     <div class="search-view">
       <div class="search-box">
-        <input type="text" placeholder="输入院校名称或地区...">
-        <button>搜索</button>
+        <input type="text" v-model="query" placeholder="输入院校名称或地区...">
+        <button @click="searchUniversities">搜索</button>
       </div>
       
       <div class="filter-section">
         <div class="filter-group">
           <label>院校类型:</label>
-          <select>
-            <option>全部</option>
-            <option>综合类</option>
-            <option>理工类</option>
-            <option>师范类</option>
-            <option>医药类</option>
+          <select v-model="filters.type" @change="searchUniversities">
+            <option value="">全部</option>
+            <option value="综合类">综合类</option>
+            <option value="理工类">理工类</option>
+            <option value="师范类">师范类</option>
+            <option value="医药类">医药类</option>
           </select>
         </div>
         
         <div class="filter-group">
           <label>所在地区:</label>
-          <select>
-            <option>全部</option>
-            <option>北京</option>
-            <option>上海</option>
-            <option>广东</option>
-            <option>江苏</option>
+          <select v-model="filters.location" @change="searchUniversities">
+            <option value="">全部</option>
+            <option value="北京">北京</option>
+            <option value="上海">上海</option>
+            <option value="广东">广东</option>
+            <option value="江苏">江苏</option>
           </select>
         </div>
         
         <div class="filter-group">
           <label>院校层次:</label>
-          <select>
-            <option>全部</option>
-            <option>985工程</option>
-            <option>211工程</option>
-            <option>双一流</option>
+          <select v-model="filters.level" @change="searchUniversities">
+            <option value="">全部</option>
+            <option value="985">985工程</option>
+            <option value="211">211工程</option>
+            <option value="双一流">双一流</option>
           </select>
         </div>
       </div>
       
       <div class="school-list">
-        <div class="school-card" v-for="i in 6" :key="i">
-          <div class="school-badge">985</div>
-          <h3>北京大学</h3>
-          <p class="school-location">北京 · 综合类</p>
+        <div class="school-card" v-for="school in results" :key="school.id">
+          <div class="school-badges">
+            <div class="school-badge" v-if="school.is_985 === '1'">985</div>
+            <div class="school-badge" v-if="school.is_211 === '1'">211</div>
+          </div>
+          <h3>{{ school.university_name }}</h3>
+          <p class="school-location">{{ school.province }} · {{ school.type }}</p>
           <div class="school-stats">
             <div>
               <span>2022最低分</span>
-              <strong>680</strong>
+              <strong>{{ school.min_score }}</strong>
             </div>
             <div>
               <span>位次</span>
-              <strong>500</strong>
+              <strong>{{ school.min_rank }}</strong>
             </div>
           </div>
           <button class="detail-button">查看详情</button>
         </div>
       </div>
     </div>
-  </template>
-  
-  <script>
-  export default {
-    name: 'SearchView'
-  }
-  </script>
-  
-  <style scoped>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      query: '',
+      results: [],
+      filters: {
+        type: '',
+        location: '',
+        level: '',
+      },
+    };
+  },
+  methods: {
+    async fetchUniversities() {
+      const params = new URLSearchParams({
+        q: this.query,
+        type: this.filters.type,
+        location: this.filters.location,
+        level: this.filters.level,
+      });
+      console.log(`Sending query to backend: ${params.toString()}`); // 调试信息
+
+      try {
+        const response = await fetch(`http://localhost:3000/api/universities?${params}`);
+        const data = await response.json();
+        console.log(`Received response from backend:`, data); // 调试信息
+        this.results = data;
+      } catch (error) {
+        console.error(`Error fetching data from backend:`, error); // 调试信息
+      }
+    },
+    async searchUniversities() {
+      const params = new URLSearchParams({
+        q: this.query,
+        type: this.filters.type,
+        location: this.filters.location,
+        level: this.filters.level,
+      });
+      console.log(`Sending query to backend: ${params.toString()}`); // 调试信息
+
+      try {
+        const response = await fetch(`http://localhost:3000/api/universities?${params}`);
+        const data = await response.json();
+        console.log(`Received response from backend:`, data); // 调试信息
+        this.results = data;
+      } catch (error) {
+        console.error(`Error fetching data from backend:`, error); // 调试信息
+      }
+    },
+  },
+  mounted() {
+    // 页面加载时获取前10个院校信息
+    this.searchUniversities();
+  },
+};
+</script>
+
+<style scoped>
   .search-view {
     display: flex;
     flex-direction: column;
@@ -139,10 +194,15 @@
     position: relative;
   }
   
-  .school-badge {
+  .school-badges {
+    display: flex;
+    gap: 0.5rem;
     position: absolute;
     top: 1rem;
     right: 1rem;
+  }
+  
+  .school-badge {
     background-color: #ff9800;
     color: white;
     padding: 0.2rem 0.5rem;
@@ -195,4 +255,4 @@
   .detail-button:hover {
     background-color: #e0e0e0;
   }
-  </style>
+</style>

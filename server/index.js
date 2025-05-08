@@ -1,43 +1,32 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const mongoose = require('mongoose');
+const cors = require('cors'); // 引入 CORS 中间件
+const { exec } = require('child_process');
 
-// 初始化应用
 const app = express();
-app.use(bodyParser.json());
-app.use(cors());
+app.use(express.json());
+app.use(cors()); // 启用 CORS
 
-// 连接 MongoDB 数据库
-mongoose.connect('mongodb://localhost:27017/universities', { useNewUrlParser: true, useUnifiedTopology: true });
-
-// 定义院校数据模型
-const UniversitySchema = new mongoose.Schema({
-  name: String,
-  location: String,
-});
-const University = mongoose.model('University', UniversitySchema);
-
-// API 路由
-app.get('/api/universities', async (req, res) => {
+app.get('/api/universities', (req, res) => {
   const query = req.query.q || '';
-  const universities = await University.find({
-    $or: [
-      { name: new RegExp(query, 'i') },
-      { location: new RegExp(query, 'i') },
-    ],
+  const type = req.query.type || '';
+  const location = req.query.location || '';
+  const level = req.query.level || '';
+
+  console.log(`Received query: ${query}, type: ${type}, location: ${location}, level: ${level}`); // 调试信息
+
+  // 构建 Python 脚本命令
+  let command = `python3 data.py "${query}" "${type}" "${location}" "${level}"`;
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error executing Python script: ${stderr}`); // 调试信息
+      res.status(500).send('Server error');
+      return;
+    }
+    console.log(`Python script output: ${stdout}`); // 调试信息
+    res.json(JSON.parse(stdout));
   });
-  res.json(universities);
 });
 
-app.post('/api/universities', async (req, res) => {
-  const { name, location } = req.body;
-  const university = new University({ name, location });
-  await university.save();
-  res.status(201).json(university);
-});
-
-// 启动服务
 app.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
 });
