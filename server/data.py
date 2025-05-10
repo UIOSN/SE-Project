@@ -6,8 +6,8 @@ def search_universities(query, type_filter, location_filter, level_filter):
     results = []
     try:
         conn = mysql.connector.connect(
-            host="localhost",
-            user="root",
+            host="117.72.218.50",
+            user="pan",
             password="123456",
             database="gkvr_system"
         )
