@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS admission_info (
     min_rank INTEGER,
     is_985 BOOLEAN,
     is_211 BOOLEAN,
-    city TEXT
+    city TEXT,
+    type TEXT
 )
 """)
 
