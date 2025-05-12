@@ -24,6 +24,11 @@ const router = createRouter({
                     component: () => import('@/views/uikit/Chat.vue')
                 },
                 {
+                    path: '/uikit/chatpage',
+                    name: 'chatpage',
+                    component: () => import('@/views/uikit/ChatPage.vue')
+                },
+                {
                     path: '/uikit/search',
                     name: 'search',
                     component: () => import('@/views/uikit/SearchDoc.vue')  

@@ -13,6 +13,7 @@ const model = ref([
         items: [
             { label: '个人信息', icon: 'pi pi-fw pi-id-card', to: '/uikit/info' },
             {label: 'AI志愿助手', icon: 'pi pi-fw pi-microchip-ai', to: '/uikit/chat'},
+            {label: 'Dify工作流', icon: 'pi pi-fw pi-microchip-ai', to: '/uikit/chatpage'},
             {label: '院校查询', icon: 'pi pi-fw pi-graduation-cap', to: '/uikit/search'},
             { label: 'Input', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
             { label: 'Button', icon: 'pi pi-fw pi-mobile', to: '/uikit/button', class: 'rotated-icon' },
