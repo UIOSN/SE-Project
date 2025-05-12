@@ -14,6 +14,12 @@
             <option value="理工类">理工类</option>
             <option value="师范类">师范类</option>
             <option value="医药类">医药类</option>
+            <option value="语言类">语言类</option>
+            <option value="艺术类">艺术类</option>
+            <option value="财经类">财经类</option>
+            <option value="政法类">政法类</option>
+            <option value="农林类">农林类</option>
+            <option value="体育类">体育类</option>
           </select>
         </div>
         
@@ -25,6 +31,32 @@
             <option value="上海">上海</option>
             <option value="广东">广东</option>
             <option value="江苏">江苏</option>
+            <option value="浙江">浙江</option>
+            <option value="山东">山东</option>
+            <option value="湖北">湖北</option>
+            <option value="湖南">湖南</option>
+            <option value="四川">四川</option>
+            <option value="重庆">重庆</option>
+            <option value="陕西">陕西</option>
+            <option value="福建">福建</option>
+            <option value="河北">河北</option>
+            <option value="山西">山西</option>
+            <option value="辽宁">辽宁</option>
+            <option value="吉林">吉林</option>
+            <option value="黑龙江">黑龙江</option>
+            <option value="安徽">安徽</option>
+            <option value="江西">江西</option>
+            <option value="河南">河南</option>
+            <option value="广西">广西</option>
+            <option value="云南">云南</option>
+            <option value="贵州">贵州</option>
+            <option value="甘肃">甘肃</option>
+            <option value="青海">青海</option>
+            <option value="宁夏">宁夏</option>
+            <option value="新疆">新疆</option>
+            <option value="内蒙古">内蒙古</option>
+            <option value="西藏">西藏</option>
+            <option value="海南">海南</option>
           </select>
         </div>
         
@@ -34,7 +66,6 @@
             <option value="">全部</option>
             <option value="985">985工程</option>
             <option value="211">211工程</option>
-            <option value="双一流">双一流</option>
           </select>
         </div>
       </div>
@@ -42,20 +73,12 @@
       <div class="school-list">
         <div class="school-card" v-for="school in results" :key="school.id">
           <div class="school-badges">
-            <div class="school-badge" v-if="school.is_985 === '1'">985</div>
-            <div class="school-badge" v-if="school.is_211 === '1'">211</div>
+            <div class="school-badge" v-if="school.is985">985</div>
+            <div class="school-badge" v-if="school.is211">211</div>
           </div>
-          <h3>{{ school.university_name }}</h3>
-          <p class="school-location">{{ school.province }} · {{ school.type }}</p>
+          <h3>{{ school.school_name }}</h3>
+          <p class="school-location">{{ school.province_name }} · {{ school.school_type }}</p>
           <div class="school-stats">
-            <div>
-              <span>2022最低分</span>
-              <strong>{{ school.min_score }}</strong>
-            </div>
-            <div>
-              <span>位次</span>
-              <strong>{{ school.min_rank }}</strong>
-            </div>
           </div>
           <button class="detail-button">查看详情</button>
         </div>
@@ -63,63 +86,7 @@
     </div>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      query: '',
-      results: [],
-      filters: {
-        type: '',
-        location: '',
-        level: '',
-      },
-    };
-  },
-  methods: {
-    async fetchUniversities() {
-      const params = new URLSearchParams({
-        q: this.query,
-        type: this.filters.type,
-        location: this.filters.location,
-        level: this.filters.level,
-      });
-      console.log(`Sending query to backend: ${params.toString()}`); // 调试信息
-
-      try {
-        const response = await fetch(`http://localhost:3000/api/universities?${params}`);
-        const data = await response.json();
-        console.log(`Received response from backend:`, data); // 调试信息
-        this.results = data;
-      } catch (error) {
-        console.error(`Error fetching data from backend:`, error); // 调试信息
-      }
-    },
-    async searchUniversities() {
-      const params = new URLSearchParams({
-        q: this.query,
-        type: this.filters.type,
-        location: this.filters.location,
-        level: this.filters.level,
-      });
-      console.log(`Sending query to backend: ${params.toString()}`); // 调试信息
-
-      try {
-        const response = await fetch(`http://localhost:3000/api/universities?${params}`);
-        const data = await response.json();
-        console.log(`Received response from backend:`, data); // 调试信息
-        this.results = data;
-      } catch (error) {
-        console.error(`Error fetching data from backend:`, error); // 调试信息
-      }
-    },
-  },
-  mounted() {
-    // 页面加载时获取前10个院校信息
-    this.searchUniversities();
-  },
-};
-</script>
+<script src="./SearchView.script.js"></script>
 
 <style scoped>
   .search-view {
