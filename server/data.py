@@ -45,7 +45,7 @@ def search_universities(query, type_filter, location_filter, level_filter):
             cursor.close()
             conn.close()
 
-    return results[:10]  # 返回前10个结果
+    return results  # Return all results instead of limiting to the first 10
 
 if __name__ == "__main__":
     query = sys.argv[1] if len(sys.argv) > 1 else ''
@@ -54,3 +54,5 @@ if __name__ == "__main__":
     level_filter = sys.argv[4] if len(sys.argv) > 4 else ''
     results = search_universities(query, type_filter, location_filter, level_filter)
     print(json.dumps(results, ensure_ascii=False))  # 返回 JSON 格式的结果
+    # print("query success")
+    # json.dumps(results, ensure_ascii=False)
