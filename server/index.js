@@ -15,7 +15,7 @@ app.get('/api/universities', (req, res) => {
   console.log(`Received query: ${query}, type: ${type}, location: ${location}, level: ${level}`); // 调试信息
 
   // 构建 Python 脚本命令
-  let command = `python data.py "${query}" "${type}" "${location}" "${level}"`;
+  let command = `python3 data.py "${query}" "${type}" "${location}" "${level}"`;
   // linux 和 macOS 使用 python3
   exec(command, { encoding: 'utf8', env},(error, stdout, stderr) => {
     if (error) {

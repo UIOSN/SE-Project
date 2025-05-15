@@ -42,12 +42,21 @@ const checked = ref(false);
                         <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">密码</label>
                         <Password id="password1" v-model="password" placeholder="密码" :toggleMask="true" class="mb-4" fluid :feedback="false"></Password>
 
-                        <div class="flex items-center justify-between mt-2 mb-8 gap-8">
+                        <!-- <div class="flex items-center justify-between mt-2 mb-8 gap-8">
                             <div class="flex items-center">
                                 <Checkbox v-model="checked" id="rememberme1" binary class="mr-2"></Checkbox>
                                 <label for="rememberme1">记住密码</label>
                             </div>
                             <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">忘记密码？</span>
+                        </div> -->
+                        <div class="flex items-center justify-between mt-2 mb-8 gap-8">
+                            <div class="flex items-center">
+                                <Checkbox v-model="checked" id="rememberme1" binary class="mr-2"></Checkbox>
+                                <label for="rememberme1">记住密码</label>
+                            </div>
+                            <router-link to="/auth/register" class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">
+                                注册新账户
+                            </router-link>
                         </div>
                         <Button label="登录" class="w-full" as="router-link" to="/main"></Button>
                     </div>

@@ -6,15 +6,18 @@ import AppMenuItem from './AppMenuItem.vue';
 const model = ref([
     {
         label: 'Home',
-        items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' }]
+        items: [{ label: '主页', icon: 'pi pi-fw pi-home', to: '/' }]
     },
     {
         label: 'UI Components',
         items: [
-            { label: '个人信息', icon: 'pi pi-fw pi-id-card', to: '/uikit/info' },
-            {label: 'AI志愿助手', icon: 'pi pi-fw pi-microchip-ai', to: '/uikit/chat'},
-            {label: 'Dify工作流', icon: 'pi pi-fw pi-microchip-ai', to: '/uikit/chatpage'},
-            {label: '院校查询', icon: 'pi pi-fw pi-graduation-cap', to: '/uikit/search'},
+            { label: '考生信息填写 Info.vue', icon: 'pi pi-fw pi-id-card', to: '/info' },
+            {label: 'AI志愿助手(模板) Chat.vue', icon: 'pi pi-fw pi-microchip-ai', to: '/chat'},
+            {label: '院校查询(模板) Search.vue', icon: 'pi pi-fw pi-graduation-cap', to: '/search0'},
+            {label: '我的志愿表 MyList.vue', icon: 'pi pi-fw pi-bookmark', to: '/mylist'},
+            {label: '院校详情(模板) SchoolInfo.vue', icon: 'pi pi-fw pi-graduation-cap', to: '/school_info'},
+            {label: '院校查询(with sql) SearchDoc.vue', icon: 'pi pi-fw pi-graduation-cap', to: '/search'},
+            {label: 'Dify工作流 ChatPage.vue', icon: 'pi pi-fw pi-microchip-ai', to: '/chatpage'},
             { label: 'Input', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
             { label: 'Button', icon: 'pi pi-fw pi-mobile', to: '/uikit/button', class: 'rotated-icon' },
             { label: 'Table', icon: 'pi pi-fw pi-table', to: '/uikit/table' },

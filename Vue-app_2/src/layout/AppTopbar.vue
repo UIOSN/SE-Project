@@ -67,10 +67,16 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                         <i class="pi pi-inbox"></i>
                         <span>Messages</span>
                     </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
-                    </button>
+                    <router-link to="/uikit/profile" custom v-slot="{ navigate }">
+                        <button 
+                            type="button" 
+                            class="layout-topbar-action" 
+                            @click="navigate"
+                        >
+                            <i class="pi pi-user"></i>
+                            <span>Profile</span>
+                        </button>
+                    </router-link>
                 </div>
             </div>
         </div>

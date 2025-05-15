@@ -14,24 +14,31 @@ const router = createRouter({
                     component: () => import('@/views/Dashboard.vue')
                 },
                 {
-                    path: '/uikit/info',
+                    path: '/info',
                     name: 'info',
-                    component: () => import('@/views/uikit/InfoDoc.vue')
+                    component: () => import('@/views/pages/Info.vue')
                 },
+
                 {
-                    path: '/uikit/chat',
+                    path: '/chat',
                     name: 'chat',
-                    component: () => import('@/views/uikit/Chat.vue')
+                    component: () => import('@/views/pages/Chat.vue')
                 },
                 {
-                    path: '/uikit/chatpage',
+                    path: '/chatpage',
                     name: 'chatpage',
-                    component: () => import('@/views/uikit/ChatPage.vue')
+                    component: () => import('@/views/pages/ChatPage.vue')
                 },
                 {
-                    path: '/uikit/search',
+                    path: '/search',
                     name: 'search',
-                    component: () => import('@/views/uikit/SearchDoc.vue')  
+                    component: () => import('@/views/pages/SearchDoc.vue')  
+                },
+                {
+                    path: '/search0',
+                    name: 'search0',
+                    component: ()=> import('@/views/pages/Search.vue')
+
                 },
                 {
                     path: '/uikit/input',
@@ -39,9 +46,24 @@ const router = createRouter({
                     component: () => import('@/views/uikit/InputDoc.vue')
                 },
                 {
+                    path: '/school_info',
+                    name: 'school_info',
+                    component: () => import('@/views/pages/School_Info.vue')
+                },
+                {
+                    path: '/mylist',
+                    name: 'mylist',
+                    component: () => import('@/views/pages/MyList.vue')
+                },
+                {
                     path: '/uikit/button',
                     name: 'button',
                     component: () => import('@/views/uikit/ButtonDoc.vue')
+                },
+                {
+                    path: '/uikit/profile',
+                    name: 'profile',
+                    component: () => import('@/views/uikit/Profile.vue')
                 },
                 {
                     path: '/uikit/table',
@@ -137,6 +159,12 @@ const router = createRouter({
             path: '/auth/login',
             name: 'login',
             component: () => import('@/views/pages/auth/Login.vue')
+        },
+        
+        {
+            path: '/auth/register',
+            name: 'register',
+            component: () => import('@/views/pages/auth/Register.vue')  
         },
         {
             path: '/auth/access',
