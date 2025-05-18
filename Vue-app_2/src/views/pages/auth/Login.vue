@@ -5,6 +5,49 @@ import { ref } from 'vue';
 const email = ref('');
 const password = ref('');
 const checked = ref(false);
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+
+const router = useRouter();
+const errorMessage = ref('');
+const loading = ref(false);
+
+const handleLogin = async () => {
+  try {
+    if (!email.value || !password.value) {
+      errorMessage.value = '请输入邮箱和密码';
+      return;
+    }
+
+    loading.value = true;
+    
+    const response = await axios.post('http://localhost:3000/api/auth/login', {
+      email: email.value,
+      password: password.value
+    });
+    
+    // 保存token和用户信息
+    localStorage.setItem('token', response.data.token);
+    
+    // 如果选择了"记住我"
+    if (checked.value) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    
+    // 登录成功，跳转到主页
+    router.push('/main');
+  } catch (error) {
+    if (error.response && error.response.data) {
+      errorMessage.value = error.response.data.error;
+    } else {
+      errorMessage.value = '登录失败，请稍后再试';
+    }
+    console.error('登录错误:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
 </script>
 
 <template>
@@ -58,7 +101,7 @@ const checked = ref(false);
                                 注册新账户
                             </router-link>
                         </div>
-                        <Button label="登录" class="w-full" as="router-link" to="/main"></Button>
+                        <Button label="登录" class="w-full" @click="handleLogin" :loading="loading"></Button>
                     </div>
                 </div>
             </div>
