@@ -27,6 +27,9 @@
                     </div>
 
                     <div>
+                        <div v-if="errorMessage" class="p-message p-message-error p-3 mb-4">
+                            {{ errorMessage }}
+                        </div>
                         <div class="p-fluid">
                             <!-- 第一行：姓名和手机号 -->
                             <div class="flex flex-wrap gap-6 mb-6">
@@ -73,7 +76,7 @@
                             </div>
                         </div>
 
-                        <Button label="注册" class="w-full mb-4" @click="register" />
+                       <Button label="注册" class="w-full" @click="handleRegister" :loading="loading"></Button>
 
                         <div class="text-center mt-4">
                             <span class="text-muted-color mr-2">已有账号?</span>
@@ -88,6 +91,19 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+
+const router = useRouter();
+const errorMessage = ref('');
+const loading = ref(false);
+const firstname = ref('');
+const phone = ref('');
+const email = ref('');
+const password = ref('');
+const confirmPassword = ref('');
+const agree = ref(false);
+const submitted = ref(false);
 /* 保持原有脚本部分不变 */
 const userTypes = ref([
     { name: '学生', code: 'STUDENT' },
@@ -99,6 +115,47 @@ const userTypes = ref([
 ]);
 
 const userType = ref(null); // 当前选中的用户类型
+
+const handleRegister = async () => {
+  try {
+    // 表单验证
+    if (!firstname.value || !phone.value || !email.value || !password.value || !confirmPassword.value || !userType.value || !agree.value) {
+      errorMessage.value = '请填写所有必填字段并同意服务条款';
+      return;
+    }
+    
+    if (password.value !== confirmPassword.value) {
+      errorMessage.value = '两次输入的密码不一致';
+      return;
+    }
+    
+    loading.value = true;
+    
+    // 发送注册请求
+    const response = await axios.post('http://localhost:3000/api/auth/register', {
+      firstname: firstname.value,
+      phone: phone.value,
+      email: email.value,
+      password: password.value,
+      userType: userType.value
+    });
+    
+    // 注册成功
+    alert('注册成功！请登录');
+    router.push('/auth/login');
+  } catch (error) {
+    if (error.response && error.response.data) {
+      errorMessage.value = error.response.data.error;
+    } else {
+      errorMessage.value = '注册失败，请稍后再试';
+    }
+    console.error('注册错误:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+
 </script>
 
 <style scoped>
