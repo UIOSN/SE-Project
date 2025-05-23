@@ -1,23 +1,12 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
-// 身份验证守卫函数
-const requireAuth = (to, from, next) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    next(); // 允许访问
-  } else {
-    next('/auth/login'); // 重定向到登录页
-  }
-};
-
 const router = createRouter({
     history: createWebHistory(),
     routes: [
         {
             path: '/main',
             component: AppLayout,
-            beforeEnter: requireAuth, // 添加身份验证守卫，保护所有/main下的路由
             children: [
                 {
                     path: '/main',
@@ -188,24 +177,6 @@ const router = createRouter({
             component: () => import('@/views/pages/auth/Error.vue')
         }
     ]
-});
-
-// 全局导航守卫 - 为了更全面地保护所有需要登录的路由
-router.beforeEach((to, from, next) => {
-    // 不需要登录就可以访问的页面路径列表
-    const publicPages = ['/', '/auth/login', '/auth/register', '/auth/access', '/auth/error', '/pages/notfound'];
-    // 检查当前路径是否需要认证
-    const authRequired = !publicPages.includes(to.path) && !to.path.startsWith('/pages/');
-    
-    // 获取登录令牌
-    const token = localStorage.getItem('token');
-    
-    // 如果需要认证但没有令牌，重定向到登录页面
-    if (authRequired && !token) {
-        next('/auth/login');
-    } else {
-        next(); // 继续正常导航
-    }
 });
 
 export default router;
