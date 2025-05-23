@@ -3,20 +3,30 @@ import { computed, onMounted, ref } from 'vue';
 
 const universities = ref([]);
 
+// Ensure logo URLs are root-relative
 const fetchUniversities = async () => {
   try {
     const response = await fetch('http://localhost:3000/api/universities');
     const data = await response.json();
-    // 自动生成 tags 字段，兼容后端只返回 is985/is211 的情况
-    universities.value = data.map(uni => ({
-      ...uni,
-      tags: Array.isArray(uni.tags)
-        ? uni.tags
-        : [
-            ...(uni.is985 ? ['985'] : []),
-            ...(uni.is211 ? ['211'] : [])
-          ]
-    }));
+    universities.value = data.map(uni => {
+      let logoUrl = '/logo/default.jpg'; // Default fallback logo
+      if (uni.school_id) {
+        logoUrl = `/logo/${uni.school_id}.jpg`; // Use root-relative path
+      } else {
+        console.warn(`Missing school_id for university:`, uni);
+      }
+      // console.log(`Generated logo URL for ${uni.school_name}:`, logoUrl);
+      return {
+        ...uni,
+        tags: Array.isArray(uni.tags)
+          ? uni.tags
+          : [
+              ...(uni.is985 ? ['985'] : []),
+              ...(uni.is211 ? ['211'] : [])
+            ],
+        logo: logoUrl
+      };
+    });
     console.log('Fetched Universities:', universities.value);
   } catch (error) {
     console.error('Error fetching universities:', error);
@@ -26,6 +36,14 @@ const fetchUniversities = async () => {
 onMounted(() => {
   fetchUniversities();
   console.log('Selected Tags on Mount:', selectedTags.value);
+
+  // Debugging Avatar component
+  universities.value.forEach(uni => {
+    console.log(`Checking Avatar for ${uni.school_name}:`, {
+      logo: uni.logo,
+      label: uni.school_name ? uni.school_name[0] : ''
+    });
+  });
 });
 
 // 搜索和筛选状态
@@ -152,13 +170,16 @@ function onTagsChange(val) {
       <Card v-for="uni in paginatedUniversities" :key="uni.id" class="hover:shadow-lg transition-all">
         <template #header>
           <div class="flex items-center p-4 gap-4">
-            <Avatar 
+            <!-- Temporarily replace Avatar with img for debugging -->
+            <img :src="uni.logo" :alt="uni.school_name + ' logo'" style="width: 50px; height: 50px; border-radius: 50%;" @error="console.error('Error loading image with <img> tag:', $event)" />
+            <!-- <Avatar 
               :image="uni.logo" 
               :label="uni.school_name ? uni.school_name[0] : ''" 
               size="large" 
               shape="circle"
               class="bg-primary text-primary-contrast"
-            />
+              @error="console.error(`Error loading logo for ${uni.school_name}:`, uni.logo)"
+            /> -->
             <div>
               <div class="text-xl font-semibold">{{ uni.school_name }}</div>
               <div class="text-color-secondary">{{ uni.province_name }} · {{ uni.school_type }}</div>

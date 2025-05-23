@@ -1,45 +1,44 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
-// 模拟院校数据
-const universities = ref([
-  {
-    id: 1,
-    name: '清华大学',
-    location: '北京',
-    tags: ['985', '211','双一流'],
-    score: 695,
-    rank: 1,
-    logo: 'https://example.com/tsinghua.png'
-  },
-  {
-    id: 2,
-    name: '北京大学',
-    location: '北京',
-    tags: ['985', '211', '双一流'],
-    score: 693,
-    rank: 2,
-    logo: 'https://example.com/pku.png'
-  },
-  {
-    id: 3,
-    name: '浙江大学',
-    location: '浙江',
-    tags: ['985', '211','双一流'],
-    score: 680,
-    rank: 3,
-    logo: 'https://example.com/zju.png'
-  },
-  {
-    id: 4,
-    name: '上海交通大学',
-    location: '上海',
-    tags: ['985', '211', '双一流'],
-    score: 678,
-    rank: 4,
-    logo: 'https://example.com/sjtu.png'
+const universities = ref([]);
+
+// Fetch university data from the API
+const fetchUniversities = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/api/universities');
+    const data = await response.json();
+    universities.value = data.map(uni => {
+      let logoUrl = '/logo/default.jpg'; // Default fallback logo
+      if (uni.school_id) {
+        logoUrl = `/logo/${uni.school_id}.jpg`;
+      } else {
+        console.warn(`Missing school_id for university:`, uni);
+      }
+      // console.log(`Generated logo URL for ${uni.school_name || uni.name}:`, logoUrl);
+      return {
+        ...uni,
+        // Ensure compatibility with existing 'name' and 'location' if API uses 'school_name' and 'province_name'
+        name: uni.school_name || uni.name,
+        location: uni.province_name || uni.location,
+        tags: Array.isArray(uni.tags)
+          ? uni.tags
+          : [
+              ...(uni.is985 ? ['985'] : []),
+              ...(uni.is211 ? ['211'] : [])
+            ],
+        logo: logoUrl
+      };
+    });
+    console.log('Fetched Universities for Search.vue:', universities.value);
+  } catch (error) {
+    console.error('Error fetching universities for Search.vue:', error);
   }
-]);
+};
+
+onMounted(() => {
+  fetchUniversities();
+});
 
 // 搜索和筛选状态
 const searchText = ref('');
@@ -52,12 +51,22 @@ const availableTags = ['985', '211', '双一流'];
 // 筛选后的院校列表
 const filteredUniversities = computed(() => {
   return universities.value.filter(uni => {
-    const matchesSearch = uni.name.includes(searchText.value) || 
-                         uni.location.includes(searchText.value);
+    const uniName = uni.school_name || uni.name || '';
+    const uniLocation = uni.province_name || uni.location || '';
+    const matchesSearch = uniName.includes(searchText.value) || 
+                         uniLocation.includes(searchText.value);
     const matchesTags = selectedTags.value.length === 0 || 
-                       uni.tags.some(tag => selectedTags.value.includes(tag));
+                       (Array.isArray(uni.tags) && uni.tags.some(tag => selectedTags.value.includes(tag)));
     return matchesSearch && matchesTags;
-  }).sort((a, b) => a[sortBy.value] - b[sortBy.value]);
+  }).sort((a, b) => {
+    if (sortBy.value === 'rank') {
+      return (a.rank || Infinity) - (b.rank || Infinity);
+    }
+    if (sortBy.value === 'score') {
+      return (b.score || 0) - (a.score || 0); // Higher score first
+    }
+    return 0;
+  });
 });
 
 // 标签颜色映射
@@ -119,10 +128,11 @@ const tagSeverity = {
           <div class="flex items-center p-4 gap-4">
             <Avatar 
               :image="uni.logo" 
-              :label="uni.name[0]" 
+              :label="uni.name ? uni.name[0] : ''" 
               size="large" 
               shape="circle"
               class="bg-primary text-primary-contrast"
+              @error="console.error(`Error loading logo for ${uni.name}:`, uni.logo)"
             />
             <div>
               <div class="text-xl font-semibold">{{ uni.name }}</div>
@@ -139,18 +149,18 @@ const tagSeverity = {
                 v-for="tag in uni.tags" 
                 :key="tag"
                 :value="tag"
-                :severity="tagSeverity[tag]"
+                :severity="tagSeverity[tag] || 'secondary'"
                 :rounded="true"
               />
             </div>
             
             <!-- 院校数据 -->
             <div class="grid grid-cols-2 gap-4 mt-3">
-              <div>
+              <div v-if="uni.score">
                 <div class="text-sm text-color-secondary">最低分数线</div>
                 <div class="text-xl font-bold">{{ uni.score }}分</div>
               </div>
-              <div>
+              <div v-if="uni.rank">
                 <div class="text-sm text-color-secondary">全国排名</div>
                 <div class="text-xl font-bold">第{{ uni.rank }}名</div>
               </div>

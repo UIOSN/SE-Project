@@ -13,7 +13,7 @@ def search_universities(query, type_filter, location_filter, level_filter):
         )
         cursor = conn.cursor(dictionary=True)
 
-        sql = "SELECT school_name, province_name, school_type, is985, is211 FROM school_info WHERE 1=1"
+        sql = "SELECT school_id, school_name, province_name, school_type, is985, is211 FROM school_info WHERE 1=1"
         params = []
 
         if query:
