@@ -1,14 +1,22 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
 node_modules
-coverage
-*.log*
-.nuxt
-.nitro
-.cache
-.output
-.env
-dist
-.DS_Store
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
 .idea
-.eslintcache
-api-generator/typedoc.json
-**/.DS_Store
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
