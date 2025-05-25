@@ -1,29 +1,168 @@
 const express = require('express');
-const cors = require('cors'); // 引入 CORS 中间件
+const cors = require('cors');
+const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { exec } = require('child_process');
-const env = {...process.env, PYTHONIOENCODING: 'utf-8'}; // 设置环境变量
-const app = express();
-app.use(express.json());
-app.use(cors()); // 启用 CORS
 
+const env = {...process.env, PYTHONIOENCODING: 'utf-8'};
+const app = express();
+
+app.use(express.json());
+app.use(cors());
+
+// **数据库配置** - 请替换为您的实际数据库信息
+const dbConfig = {
+  host: '117.72.218.50',     // 您的远程服务器地址
+  user: 'sh',               // 数据库用户名
+  password: '123456',           // 数据库密码
+  database: 'se_project',
+  charset: 'utf8mb4',
+  port: 3306
+};
+
+// **JWT密钥** - 生产环境请使用环境变量
+const JWT_SECRET = '2545166808';
+
+// 创建数据库连接池
+const pool = mysql.createPool(dbConfig);
+
+// **用户注册API**
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, phone, email, password, userType } = req.body;
+    
+    // 基本验证
+    if (!name || !phone || !email || !password || !userType) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '所有字段都是必填的' 
+      });
+    }
+
+    // 检查用户是否已存在
+    const [existingUsers] = await pool.execute(
+      'SELECT * FROM users WHERE email = ? OR phone = ?',
+      [email, phone]
+    );
+
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '邮箱或手机号已被注册' 
+      });
+    }
+
+    // 加密密码
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 插入新用户
+    const [result] = await pool.execute(
+      'INSERT INTO users (name, phone, email, password, user_type) VALUES (?, ?, ?, ?, ?)',
+      [name, phone, email, hashedPassword, userType]
+    );
+
+    res.json({ 
+      success: true, 
+      message: '注册成功',
+      userId: result.insertId 
+    });
+
+  } catch (error) {
+    console.error('注册错误:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '服务器错误' 
+    });
+  }
+});
+
+// **用户登录API**
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '邮箱和密码都是必填的' 
+      });
+    }
+
+    // 查找用户
+    const [users] = await pool.execute(
+      'SELECT * FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({ 
+        success: false, 
+        message: '邮箱或密码错误' 
+      });
+    }
+
+    const user = users[0];
+
+    // 验证密码
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ 
+        success: false, 
+        message: '邮箱或密码错误' 
+      });
+    }
+
+    // 生成JWT token
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email,
+        userType: user.user_type 
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({ 
+      success: true, 
+      message: '登录成功',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        userType: user.user_type
+      }
+    });
+
+  } catch (error) {
+    console.error('登录错误:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '服务器错误' 
+    });
+  }
+});
+
+// 保持原有的大学查询API
 app.get('/api/universities', (req, res) => {
   const query = req.query.q || '';
   const type = req.query.type || '';
   const location = req.query.location || '';
   const level = req.query.level || '';
 
-  console.log(`Received query: ${query}, type: ${type}, location: ${location}, level: ${level}`); // 调试信息
+  console.log(`Received query: ${query}, type: ${type}, location: ${location}, level: ${level}`);
 
-  // 构建 Python 脚本命令
   let command = `python3 data.py "${query}" "${type}" "${location}" "${level}"`;
-  // linux 和 macOS 使用 python3
-  exec(command, { encoding: 'utf8', env},(error, stdout, stderr) => {
+  exec(command, { encoding: 'utf8', env}, (error, stdout, stderr) => {
     if (error) {
-      console.error(`Error executing Python script: ${stderr}`); // 调试信息
+      console.error(`Error executing Python script: ${stderr}`);
       res.status(500).send('Server error');
       return;
     }
-    console.log(`Python script output: ${stdout}`); // 调试信息
+    console.log(`Python script output: ${stdout}`);
     res.json(JSON.parse(stdout));
   });
 });

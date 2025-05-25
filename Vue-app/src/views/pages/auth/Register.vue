@@ -1,5 +1,6 @@
 
 <template>
+    <Toast /> 
     <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="flex flex-col items-center justify-center w-full max-w-6xl px-4"> <!-- 增加最大宽度和内边距 -->
             <div style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)">
@@ -88,18 +89,105 @@
 
 <script setup>
 import { ref } from 'vue';
-/* 保持原有脚本部分不变 */
+import { useRouter } from 'vue-router';
+import { useToast } from 'primevue/usetoast';
+
+const router = useRouter();
+const toast = useToast();
+
+// 表单数据
+const firstname = ref('');
+const phone = ref('');
+const email = ref('');
+const password = ref('');
+const confirmPassword = ref('');
+const userType = ref(null);
+const agree = ref(false);
+const submitted = ref(false);
+
 const userTypes = ref([
     { name: '学生', code: 'STUDENT' },
     { name: '家长', code: 'PARENT' },
     { name: '教师', code: 'TEACHER' },
     { name: '教育机构', code: 'EDU_ORGANIZATION' },
     { name: '其他', code: 'OTHER' }
-
 ]);
 
-const userType = ref(null); // 当前选中的用户类型
+// **注册功能**
+const register = async () => {
+    submitted.value = true;
+    
+    // 基本验证
+    if (!firstname.value || !phone.value || !email.value || !password.value || !userType.value || !agree.value) {
+        toast.add({
+            severity: 'error',
+            summary: '错误',
+            detail: '请填写所有必填字段并同意服务条款',
+            life: 3000
+        });
+        return;
+    }
+    
+    // 密码确认验证
+    if (password.value !== confirmPassword.value) {
+        toast.add({
+            severity: 'error',
+            summary: '错误',
+            detail: '两次输入的密码不一致',
+            life: 3000
+        });
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:3000/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: firstname.value,
+                phone: phone.value,
+                email: email.value,
+                password: password.value,
+                userType: userType.value.code
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            toast.add({
+                severity: 'success',
+                summary: '成功',
+                detail: '注册成功，即将跳转到登录页面',
+                life: 3000
+            });
+            
+            // 3秒后跳转到登录页面
+            setTimeout(() => {
+                router.push('/auth/login');
+            }, 3000);
+        } else {
+            toast.add({
+                severity: 'error',
+                summary: '注册失败',
+                detail: result.message || '注册失败，请重试',
+                life: 3000
+            });
+        }
+    } catch (error) {
+        console.error('注册错误:', error);
+        toast.add({
+            severity: 'error',
+            summary: '网络错误',
+            detail: '无法连接到服务器，请检查网络连接',
+            life: 3000
+        });
+    }
+};
 </script>
+
 
 <style scoped>
 /* 新增响应式调整 */
