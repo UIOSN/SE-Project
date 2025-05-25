@@ -1,14 +1,85 @@
 <script setup>
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useToast } from 'primevue/usetoast';
+
+const router = useRouter();
+const toast = useToast();
 
 const email = ref('');
 const password = ref('');
 const checked = ref(false);
+const loading = ref(false);
+
+// **登录功能**
+const login = async () => {
+    if (!email.value || !password.value) {
+        toast.add({
+            severity: 'error',
+            summary: '错误',
+            detail: '请输入邮箱和密码',
+            life: 3000
+        });
+        return;
+    }
+
+    loading.value = true;
+
+    try {
+        const response = await fetch('http://localhost:3000/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email.value,
+                password: password.value
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // 保存用户信息和token到localStorage
+            localStorage.setItem('token', result.token);
+            localStorage.setItem('user', JSON.stringify(result.user));
+            
+            toast.add({
+                severity: 'success',
+                summary: '登录成功',
+                detail: `欢迎回来，${result.user.name}！`,
+                life: 3000
+            });
+            
+            // 跳转到主页面
+            router.push('/main');
+        } else {
+            toast.add({
+                severity: 'error',
+                summary: '登录失败',
+                detail: result.message || '登录失败，请重试',
+                life: 3000
+            });
+        }
+    } catch (error) {
+        console.error('登录错误:', error);
+        toast.add({
+            severity: 'error',
+            summary: '网络错误',
+            detail: '无法连接到服务器，请检查网络连接',
+            life: 3000
+        });
+    } finally {
+        loading.value = false;
+    }
+};
 </script>
+
 
 <template>
     <FloatingConfigurator />
+    <Toast /> 
     <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="flex flex-col items-center justify-center">
             <div style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)">
@@ -58,7 +129,8 @@ const checked = ref(false);
                                 注册新账户
                             </router-link>
                         </div>
-                        <Button label="登录" class="w-full" as="router-link" to="/main"></Button>
+                       <Button label="登录" class="w-full" @click="login" :loading="loading"></Button>
+
                     </div>
                 </div>
             </div>
