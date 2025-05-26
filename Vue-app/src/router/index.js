@@ -46,7 +46,7 @@ const router = createRouter({
                     component: () => import('@/views/uikit/InputDoc.vue')
                 },
                 {
-                    path: '/school_info',
+                    path: '/school_info/:id',
                     name: 'school_info',
                     component: () => import('@/views/pages/School_Info.vue')
                 },

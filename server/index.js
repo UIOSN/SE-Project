@@ -167,6 +167,72 @@ app.get('/api/universities', (req, res) => {
   });
 });
 
+// **院校详细信息API**
+app.get('/api/school-detail/:id', async (req, res) => {
+  try {
+    const schoolId = req.params.id;
+    
+    const connection = await mysql.createConnection({
+      host: "117.72.218.50",
+      user: "pan",
+      password: "123456",
+      database: "gkvr_system"
+    });
+
+    const [rows] = await connection.execute(
+      'SELECT * FROM school_info_detail WHERE school_id = ?',
+      [schoolId]
+    );
+
+    await connection.end();
+
+    if (rows.length > 0) {
+      res.json(rows[0]);
+    } else {
+      res.status(404).json({ message: '未找到该院校的详细信息' });
+    }
+  } catch (error) {
+    console.error('获取院校详细信息失败:', error);
+    res.status(500).json({ 
+      message: '服务器错误',
+      error: error.message 
+    });
+  }
+});
+
+// **单个院校基本信息API**
+app.get('/api/school/:id', async (req, res) => {
+  try {
+    const schoolId = req.params.id;
+    
+    const connection = await mysql.createConnection({
+      host: "117.72.218.50",
+      user: "pan", 
+      password: "123456",
+      database: "gkvr_system"
+    });
+
+    const [rows] = await connection.execute(
+      'SELECT * FROM school_info WHERE school_id = ?',
+      [schoolId]
+    );
+
+    await connection.end();
+
+    if (rows.length > 0) {
+      res.json(rows);
+    } else {
+      res.status(404).json({ message: '未找到该院校信息' });
+    }
+  } catch (error) {
+    console.error('获取院校基本信息失败:', error);
+    res.status(500).json({ 
+      message: '服务器错误',
+      error: error.message 
+    });
+  }
+});
+
 app.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
 });

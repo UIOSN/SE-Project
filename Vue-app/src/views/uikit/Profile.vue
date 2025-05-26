@@ -189,12 +189,14 @@ const formatDate = (dateString) => {
 
           <template #footer>
             <div class="flex justify-between">
-              <Button 
-                label="查看详情" 
-                icon="pi pi-info-circle" 
-                severity="secondary"
-                outlined
-              />
+              <router-link :to="'/school_info/' + uni.id">
+                <Button 
+                  label="查看详情" 
+                  icon="pi pi-info-circle" 
+                  severity="secondary"
+                  outlined
+                />
+              </router-link>
               <Button 
                 label="取消收藏" 
                 icon="pi pi-star-fill" 

@@ -166,11 +166,9 @@ const tagSeverity = {
               </div>
             </div>
           </div>
-        </template>
-
-        <template #footer>
+        </template>        <template #footer>
           <div class="flex justify-between">
-            <router-link :to="'/school_info'">
+            <router-link :to="'/school_info/' + (uni.school_id || uni.id)">
               <Button 
                 label="查看详情" 
                 icon="pi pi-info-circle" 

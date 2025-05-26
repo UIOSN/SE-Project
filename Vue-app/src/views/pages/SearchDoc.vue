@@ -212,16 +212,16 @@ function onTagsChange(val) {
               </div>
             </div>
           </div>
-        </template>
-
-        <template #footer>
+        </template>        <template #footer>
           <div class="flex justify-between">
-            <Button 
-              label="查看详情" 
-              icon="pi pi-info-circle" 
-              severity="secondary"
-              outlined
-            />
+            <router-link :to="'/school_info/' + uni.school_id">
+              <Button 
+                label="查看详情" 
+                icon="pi pi-info-circle" 
+                severity="secondary"
+                outlined
+              />
+            </router-link>
             <Button 
               label="收藏" 
               icon="pi pi-star" 
