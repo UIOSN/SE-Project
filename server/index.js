@@ -171,7 +171,7 @@ app.get('/api/universities', (req, res) => {
 app.get('/api/school-detail/:id', async (req, res) => {
   try {
     const schoolId = req.params.id;
-    
+
     const connection = await mysql.createConnection({
       host: "117.72.218.50",
       user: "pan",
@@ -226,6 +226,39 @@ app.get('/api/school/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('获取院校基本信息失败:', error);
+    res.status(500).json({ 
+      message: '服务器错误',
+      error: error.message 
+    });
+  }
+});
+
+// Added API to fetch major scores and province rankings
+app.get('/api/school-majors/:id', async (req, res) => {
+  try {
+    const schoolId = req.params.id;
+
+    const connection = await mysql.createConnection({
+      host: "117.72.218.50",
+      user: "pan",
+      password: "123456",
+      database: "gkvr_system"
+    });
+
+    const [rows] = await connection.execute(
+      'SELECT * FROM major_score WHERE school_id = ?',
+      [schoolId]
+    );
+
+    await connection.end();
+
+    if (rows.length > 0) {
+      res.json(rows);
+    } else {
+      res.status(404).json({ message: '未找到该院校的专业分数线和省份排名' });
+    }
+  } catch (error) {
+    console.error('获取专业分数线和省份排名失败:', error);
     res.status(500).json({ 
       message: '服务器错误',
       error: error.message 

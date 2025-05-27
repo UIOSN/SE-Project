@@ -32,6 +32,7 @@ const schoolDetails = ref({
   content: '暂无简介'
 });
 
+const majorScores = ref([]);
 const loading = ref(true);
 
 // 获取院校详细信息
@@ -74,7 +75,12 @@ const fetchSchoolDetails = async () => {
         school_site: detailResponse.data.school_site || '暂无官网',
         email: detailResponse.data.email || '暂无邮箱',
         phone: detailResponse.data.phone || '暂无电话',
-        content: detailResponse.data.content || '暂无简介'
+        content: detailResponse.data.content || '暂无简介',
+        ruanke_rank: detailResponse.data.ruanke_rank,
+        xyh_rank: detailResponse.data.xyh_rank,
+        us_rank: detailResponse.data.us_rank,
+        male_rate: detailResponse.data.men_rate,
+        female_rate: detailResponse.data.female_rate
       };
     }
     
@@ -107,277 +113,21 @@ const fetchSchoolDetails = async () => {
   }
 };
 
-// 图表数据
-const scoreTrendData = ref(null);
-const majorDistributionData = ref(null);
-const facultyRadarData = ref(null);
-const rankTrendData = ref(null);
-const employmentPieData = ref(null);
-const scoreTrendOptions = ref(null);
-const majorDistributionOptions = ref(null);
-const facultyRadarOptions = ref(null);
-const rankTrendOptions = ref(null);
-const employmentPieOptions = ref(null);
+// 获取专业分数线和省份排名
+const fetchMajorScores = async () => {
+  try {
+    const schoolId = route.params.id;
+    const response = await axios.get(`http://localhost:3000/api/school-majors/${schoolId}`);
+    majorScores.value = response.data;
+  } catch (error) {
+    console.error('获取专业分数线和省份排名失败:', error);
+  }
+};
 
 onMounted(() => {
   fetchSchoolDetails();
-  initChartData();
+  fetchMajorScores();
 });
-
-function initChartData() {
-  const documentStyle = getComputedStyle(document.documentElement);
-  const textColor = documentStyle.getPropertyValue('--text-color');
-  const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
-  const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
-
-  // 使用模板中的标准配色
-  const colors = {
-    primary500: documentStyle.getPropertyValue('--p-primary-500'),
-    primary200: documentStyle.getPropertyValue('--p-primary-200'),
-    indigo500: documentStyle.getPropertyValue('--p-indigo-500'),
-    indigo400: documentStyle.getPropertyValue('--p-indigo-400'),
-    purple500: documentStyle.getPropertyValue('--p-purple-500'),
-    purple400: documentStyle.getPropertyValue('--p-purple-400'),
-    teal500: documentStyle.getPropertyValue('--p-teal-500'),
-    teal400: documentStyle.getPropertyValue('--p-teal-400'),
-    orange500: documentStyle.getPropertyValue('--p-orange-500')
-  };
-
-  // 1. 分数线趋势（使用模板中的折线图配色）
-  scoreTrendData.value = {
-    labels: ['2019', '2020', '2021', '2022', '2023'],
-    datasets: [
-      {
-        label: '最低录取分',
-        data: [680, 685, 688, 692, 695],
-        fill: false,
-        borderColor: colors.primary500,
-        backgroundColor: colors.primary500,
-        tension: 0.4
-      },
-      {
-        label: '省控线',
-        data: [550, 555, 558, 560, 562],
-        fill: false,
-        borderColor: colors.primary200,
-        backgroundColor: colors.primary200,
-        borderDash: [5, 5],
-        tension: 0.4
-      }
-    ]
-  };
-  scoreTrendOptions.value = {
-    plugins: {
-      legend: {
-        labels: { 
-          color: textColor,
-          font: { weight: 500 }
-        }
-      },
-      tooltip: {
-        callbacks: {
-          label: ctx => `${ctx.dataset.label}: ${ctx.raw}分`
-        }
-      }
-    },
-    scales: {
-      x: { 
-        ticks: { 
-          color: textColorSecondary,
-          font: { weight: 500 }
-        },
-        grid: { 
-          color: surfaceBorder,
-          drawBorder: false
-        }
-      },
-      y: { 
-        ticks: { color: textColorSecondary },
-        grid: { 
-          color: surfaceBorder,
-          drawBorder: false
-        }
-      }
-    }
-  };
-
-  // 2. 专业分数分布（使用模板中的柱状图配色）
-  majorDistributionData.value = {
-    labels: ['计算机', '电子工程', '建筑学', '经济管理', '机械工程'],
-    datasets: [
-      {
-        label: '最低分',
-        backgroundColor: colors.primary500,
-        borderColor: colors.primary500,
-        data: [705, 698, 690, 695, 685]
-      },
-      {
-        label: '平均分',
-        backgroundColor: colors.primary200,
-        borderColor: colors.primary200,
-        data: [715, 705, 700, 708, 695]
-      }
-    ]
-  };
-  majorDistributionOptions.value = {
-    plugins: {
-      legend: {
-        labels: { 
-          color: textColor,
-          font: { weight: 500 }
-        }
-      }
-    },
-    scales: {
-      x: {
-        ticks: { 
-          color: textColorSecondary,
-          font: { weight: 500 }
-        },
-        grid: { 
-          display: false,
-          drawBorder: false
-        }
-      },
-      y: {
-        ticks: { color: textColorSecondary },
-        grid: { 
-          color: surfaceBorder,
-          drawBorder: false
-        }
-      }
-    }
-  };
-
-  // 3. 师资力量雷达图（使用模板中的雷达图配色）
-  facultyRadarData.value = {
-    labels: ['院士人数', '教授占比', '国家级人才', '国际师资', '师生比'],
-    datasets: [
-      {
-        label: '清华大学',
-        borderColor: colors.indigo400,
-        pointBackgroundColor: colors.indigo400,
-        pointBorderColor: colors.indigo400,
-        pointHoverBackgroundColor: textColor,
-        pointHoverBorderColor: colors.indigo400,
-        data: [88, 35, 120, 25, 1.8]
-      },
-      {
-        label: '全国平均',
-        borderColor: colors.purple400,
-        pointBackgroundColor: colors.purple400,
-        pointBorderColor: colors.purple400,
-        pointHoverBackgroundColor: textColor,
-        pointHoverBorderColor: colors.purple400,
-        data: [15, 12, 30, 8, 3.5]
-      }
-    ]
-  };
-  facultyRadarOptions.value = {
-    plugins: {
-      legend: { 
-        labels: { 
-          color: textColor,
-          font: { weight: 500 }
-        }
-      }
-    },
-    scales: {
-      r: {
-        angleLines: { color: surfaceBorder },
-        grid: { color: textColorSecondary },
-        pointLabels: { color: textColorSecondary }
-      }
-    }
-  };
-
-  // 4. 排名趋势（使用模板中的多色折线）
-  rankTrendData.value = {
-    labels: ['2019', '2020', '2021', '2022', '2023'],
-    datasets: [
-      {
-        label: 'QS世界排名',
-        data: [17, 16, 15, 14, 12],
-        borderColor: colors.indigo500,
-        backgroundColor: colors.indigo500,
-        tension: 0.4
-      },
-      {
-        label: '软科中国排名',
-        data: [1, 1, 1, 1, 1],
-        borderColor: colors.teal500,
-        backgroundColor: colors.teal500,
-        tension: 0.4
-      }
-    ]
-  };
-  rankTrendOptions.value = {
-    plugins: {
-      legend: { 
-        labels: { 
-          color: textColor,
-          font: { weight: 500 }
-        }
-      }
-    },
-    scales: {
-      x: { 
-        ticks: { color: textColorSecondary },
-        grid: { color: surfaceBorder }
-      },
-      y: { 
-        ticks: { color: textColorSecondary },
-        grid: { color: surfaceBorder }
-      }
-    }
-  };
-
-  // 5. 就业去向（使用模板中的饼图配色）
-  employmentPieData.value = {
-    labels: ['国内升学', '出国深造', '直接就业', '自主创业'],
-    datasets: [
-      {
-        data: [55, 15, 28, 2],
-        backgroundColor: [
-          colors.indigo500,
-          colors.purple500,
-          colors.teal500,
-          colors.orange500
-        ],
-        hoverBackgroundColor: [
-          colors.indigo400,
-          colors.purple400,
-          colors.teal400,
-          colors.orange500
-        ]
-      }
-    ]
-  };
-  employmentPieOptions.value = {
-    plugins: {
-      legend: {
-        labels: {
-          color: textColor,
-          usePointStyle: true,
-          font: { weight: 500 }
-        }
-      },
-      tooltip: {
-        callbacks: {
-          label: ctx => `${ctx.label}: ${ctx.raw}%`
-        }
-      }
-    }
-  };
-}
-
-watch(
-  [getPrimary, getSurface, isDarkTheme],
-  () => {
-    initChartData();
-  },
-  { immediate: true }
-);
 
 // 监听路由参数变化
 watch(
@@ -385,224 +135,159 @@ watch(
   (newId) => {
     if (newId) {
       fetchSchoolDetails();
+      fetchMajorScores();
     }
   }
 );
 </script>
 
 <template>
-
-    <Fluid class="grid grid-cols-12 gap-8">
-        <!-- 院校基本信息 -->
-        <div class="col-span-12">
-        <div class="card flex flex-col md:flex-row gap-4 p-4">
-            <Avatar 
-            :image="university.logo" 
-            size="xlarge" 
-            shape="circle"
-            class="w-20 h-20 md:w-24 md:h-24"
+  <Fluid class="grid grid-cols-12 gap-8">
+    <!-- 院校基本信息 -->
+    <div class="col-span-12">
+      <div class="card flex flex-col md:flex-row gap-6 p-6">
+        <Avatar 
+          :image="university.logo" 
+          size="xlarge" 
+          shape="circle"
+          class="w-24 h-24"
+        />
+        <div class="flex-1">
+          <div class="text-3xl font-bold mb-4">{{ university.name }}</div>
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <Tag 
+              v-for="tag in university.tags" 
+              :key="tag"
+              :value="tag"
+              severity="info"
+              rounded
             />
-            <div class="flex-1">
-            <div class="text-2xl font-bold mb-2">{{ university.name }}</div>
-            
-            <div class="flex flex-wrap items-center gap-2 mb-3">
-                <Tag 
-                v-for="tag in university.tags" 
-                :key="tag"
-                :value="tag"
-                severity="info"
-                rounded
-                />
-                <span class="text-color-secondary text-sm">
-                <i class="pi pi-map-marker mr-1"></i>
-                {{ university.location }}
-                </span>
-                
-            </div>
-            <p class="text-surface-700 dark:text-surface-300 text-sm">{{ university.description }} </p>
-            
-            </div>
-            
-            <div class="grid grid-rows-2 grid-cols-2 md:grid-cols-4 gap-3">
-              
-            <div class="text-center">
-                <div class="text-xl font-bold">{{ university.stats.faculty }}</div>
-                <div class="text-color-secondary text-sm">教师人数</div>
-            </div>
-            <div class="text-center">
-                <div class="text-xl font-bold">{{ university.stats.students }}</div>
-                <div class="text-color-secondary text-sm">在校学生</div>
-            </div>
-            <div class="text-center">
-                <div class="text-xl font-bold">{{ university.stats.labs }}</div>
-                <div class="text-color-secondary text-sm">国家级实验室</div>
-            </div>
-            <div class="text-center">
-                <div class="text-xl font-bold">{{ university.stats.employmentRate }}%</div>
-                <div class="text-color-secondary text-sm">就业率</div>
-            </div>
-            <Rating v-model="university.stats.ratingValue" />
-            <p class="text-color-secondary text-sm mt-3.5 ">{{ university.stats.ratingValue }}</p>
-            
-            
-            </div>
-            
+            <span class="text-color-secondary text-sm">
+              <i class="pi pi-map-marker mr-1"></i>
+              {{ university.location }}
+            </span>
+          </div>
+          <p class="text-color-secondary leading-relaxed">
+            {{ university.description }}
+          </p>
         </div>
-        </div>
+      </div>
+    </div>
 
-        <!-- 分数线趋势 -->
-        <div class="col-span-12 lg:col-span-6">
-        <div class="card p-4">
-            <div class="font-semibold text-lg mb-3">近5年录取分数线趋势</div>
-            <Chart 
-            type="line" 
-            :data="scoreTrendData" 
-            :options="scoreTrendOptions" 
-            class="h-16rem"
-            />
+    <!-- 院校统计数据 -->
+    <div class="col-span-12">
+      <div class="card p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="text-center">
+          <div class="text-2xl font-bold">{{ university.stats.faculty }}</div>
+          <div class="text-color-secondary text-sm">教师人数</div>
         </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold">{{ university.stats.students }}</div>
+          <div class="text-color-secondary text-sm">在校学生</div>
         </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold">{{ university.stats.labs }}</div>
+          <div class="text-color-secondary text-sm">国家级实验室</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold">
+            {{ schoolDetails.male_rate && schoolDetails.female_rate ? (schoolDetails.male_rate / schoolDetails.female_rate).toFixed(2) : 'N/A' }}
+          </div>
+          <div class="text-color-secondary text-sm">男女比例</div>
+        </div>
+      </div>
+    </div>
 
-        <!-- 专业分数分布 -->
-        <div class="col-span-12 lg:col-span-6">
-        <div class="card p-4">
-            <div class="font-semibold text-lg mb-3">各专业录取分数分布</div>
-            <Chart 
-            type="bar" 
-            :data="majorDistributionData" 
-            :options="majorDistributionOptions" 
-            class="h-16rem"
-            />
-        </div>
-        </div>
-
-        <!-- 师资力量雷达图 -->
-        <!-- <div class="col-span-12 lg:col-span-6">
-        <div class="card p-4">
-            <div class="font-semibold text-lg mb-3">师资力量对比</div>
-            <Chart 
-            type="radar" 
-            :data="facultyRadarData" 
-            :options="facultyRadarOptions" 
-            class="h-16rem"
-            />
-        </div>
-        </div> -->
-        <div class="col-span-12 xl:col-span-6">
-                <div class="card flex flex-col items-center">
-                    <div class="font-semibold text-xl mb-4">Radar</div>
-                    <Chart type="radar" :data="facultyRadarData" :options="facultyRadarOptions"></Chart>
-                </div>
+    <!-- 院校详情 -->
+    <div class="col-span-12">
+      <div class="card p-6">
+        <div class="font-semibold text-lg mb-4">院校详情</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="flex items-center gap-4">
+            <i class="pi pi-briefcase text-primary"></i>
+            <div>
+              <div class="text-sm text-color-secondary">就业率</div>
+              <div class="font-semibold">{{ schoolDetails.job }}</div>
             </div>
-
-        <!-- 排名趋势 -->
-        <div class="col-span-12 lg:col-span-6">
-        <div class="card p-4">
-            <div class="font-semibold text-lg mb-3">国内外排名趋势</div>
-            <Chart 
-            type="line" 
-            :data="rankTrendData" 
-            :options="rankTrendOptions" 
-            class="h-16rem"
-            />
-        </div>
-        </div>
-
-        <!-- 就业去向 -->
-        <!-- <div class="col-span-12 lg:col-span-6">
-        <div class="card p-4">
-            <div class="font-semibold text-lg mb-3">毕业生去向分布</div>
-            <Chart 
-            type="pie" 
-            :data="employmentPieData" 
-            :options="employmentPieOptions" 
-            class="h-16rem"
-            />
-        </div>
-        </div> -->
-        <div class="col-span-12 xl:col-span-6">
-            <div class="card flex flex-col items-center">
-                <div class="font-semibold text-xl mb-4">毕业生去向分布</div>
-                <Chart type="doughnut" :data="employmentPieData" :options="employmentPieOptions"></Chart>
+          </div>
+          <div class="flex items-center gap-4">
+            <i class="pi pi-globe text-primary"></i>
+            <div>
+              <div class="text-sm text-color-secondary">官方网站</div>
+              <a 
+                v-if="schoolDetails.school_site && schoolDetails.school_site !== '暂无官网'" 
+                :href="schoolDetails.school_site.startsWith('http') ? schoolDetails.school_site : 'http://' + schoolDetails.school_site" 
+                target="_blank" 
+                class="text-primary font-semibold hover:underline"
+              >
+                {{ schoolDetails.school_site }}
+              </a>
+              <span v-else class="font-semibold text-color-secondary">
+                {{ schoolDetails.school_site }}
+              </span>
             </div>
-        </div>
-
-        <!-- 特色优势 -->
-        <div class="col-span-12 lg:col-span-6">
-        <div class="card p-4 h-full">
-            <div class="font-semibold text-lg mb-3">特色优势</div>
-            <div class="flex flex-col gap-3">
-            <div v-for="n in 3" :key="n" class="flex items-start gap-2">
-                <i class="pi pi-check-circle text-primary mt-1"></i>
-                <div>
-                <div class="font-medium">顶尖学科建设</div>
-                <p class="text-color-secondary text-sm mt-1">
-                    拥有{{ n * 5 + 10 }}个A+学科，涵盖工学、理学、医学等多个领域
-                </p>
-                </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <i class="pi pi-envelope text-primary"></i>
+            <div>
+              <div class="text-sm text-color-secondary">联系邮箱</div>
+              <div class="font-semibold">{{ schoolDetails.email }}</div>
             </div>
-            </div>
-        </div>
-        </div>
-
-        <!-- 院校详情 -->
-        <div class="col-span-12">
-          <div class="card p-4">
-            <div class="font-semibold text-lg mb-4">院校详情</div>
-            <div v-if="loading" class="text-center">
-              <i class="pi pi-spin pi-spinner text-2xl"></i>
-              <p class="mt-2">加载中...</p>
-            </div>
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="flex items-center gap-3">
-                <i class="pi pi-briefcase text-primary"></i>
-                <div>
-                  <div class="text-sm text-color-secondary">就业率</div>
-                  <div class="font-semibold">{{ schoolDetails.job }}</div>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <i class="pi pi-globe text-primary"></i>
-                <div>
-                  <div class="text-sm text-color-secondary">官方网站</div>
-                  <a 
-                    v-if="schoolDetails.school_site && schoolDetails.school_site !== '暂无官网'" 
-                    :href="schoolDetails.school_site.startsWith('http') ? schoolDetails.school_site : 'http://' + schoolDetails.school_site" 
-                    target="_blank" 
-                    class="text-primary font-semibold hover:underline"
-                  >
-                    {{ schoolDetails.school_site }}
-                  </a>
-                  <span v-else class="font-semibold text-color-secondary">
-                    {{ schoolDetails.school_site }}
-                  </span>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <i class="pi pi-envelope text-primary"></i>
-                <div>
-                  <div class="text-sm text-color-secondary">联系邮箱</div>
-                  <div class="font-semibold">{{ schoolDetails.email }}</div>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <i class="pi pi-phone text-primary"></i>
-                <div>
-                  <div class="text-sm text-color-secondary">联系电话</div>
-                  <div class="font-semibold">{{ schoolDetails.phone }}</div>
-                </div>
-              </div>
-            </div>
-            <div class="mt-4">
-              <div class="text-sm text-color-secondary mb-2">学校简介</div>
-              <p class="text-surface-700 dark:text-surface-300 leading-relaxed">
-                {{ schoolDetails.content }}
-              </p>
+          </div>
+          <div class="flex items-center gap-4">
+            <i class="pi pi-phone text-primary"></i>
+            <div>
+              <div class="text-sm text-color-secondary">联系电话</div>
+              <div class="font-semibold">{{ schoolDetails.phone }}</div>
             </div>
           </div>
         </div>
-    
-    </Fluid>
+      </div>
+    </div>
+
+    <!-- 学校排名 -->
+    <div class="col-span-12">
+      <div class="card p-6">
+        <div class="font-semibold text-lg mb-4">学校排名</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="text-center">
+            <div class="text-4xl font-bold text-primary">{{ schoolDetails.ruanke_rank || 'N/A' }}</div>
+            <div class="text-sm text-color-secondary">软科排名</div>
+          </div>
+          <div class="text-center">
+            <div class="text-4xl font-bold text-primary">{{ schoolDetails.xyh_rank || 'N/A' }}</div>
+            <div class="text-sm text-color-secondary">校友会排名</div>
+          </div>
+          <div class="text-center">
+            <div class="text-4xl font-bold text-primary">{{ schoolDetails.us_rank || 'N/A' }}</div>
+            <div class="text-sm text-color-secondary">US News排名</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 专业分数线和省份排名 -->
+    <div class="col-span-12">
+      <div class="card p-6">
+        <div class="font-semibold text-2xl mb-6 text-center text-primary">专业分数详情</div>
+        <div v-if="loading" class="text-center">
+          <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
+          <p class="mt-4 text-lg text-color-secondary">加载中...</p>
+        </div>
+        <div v-else>
+          <div v-for="major in majorScores" :key="major.major_name" class="flex items-center justify-between border-b border-surface-border py-4 hover:bg-surface-card transition">
+            <div class="text-lg font-bold text-primary flex-1 major-name">{{ major.major_name }}</div>
+            <div class="flex items-center gap-4 flex-1 justify-center">
+              <div class="text-sm text-color-secondary">最低分: <span class="text-lg font-semibold text-primary">{{ major.min }}</span></div>
+              <div class="text-sm text-color-secondary">最高分: <span class="text-lg font-semibold text-primary">{{ major.max }}</span></div>
+              <div class="text-sm text-color-secondary">平均分: <span class="text-lg font-semibold text-primary">{{ major.average }}</span></div>
+              <div class="text-sm text-color-secondary">最低省排名: <span class="text-lg font-semibold text-primary">{{ major.min_section }}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Fluid>
 </template>
 
 <style scoped>
@@ -612,11 +297,6 @@ watch(
   border: 1px solid var(--surface-border);
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-/* 图表容器高度与模板一致 */
-.h-16rem {
-  height: 16rem;
 }
 
 /* 强制图表继承模板的文字颜色 */
@@ -638,5 +318,11 @@ watch(
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1rem;
+}
+
+/* 专业分数详情样式调整 */
+.major-name {
+  white-space: normal;
+  word-break: break-word;
 }
 </style>
