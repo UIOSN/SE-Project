@@ -1,0 +1,1 @@
+var o={outline:{width:"2px",color:"{content.background}"}},t={root:o};export{t as default,o as root};//# sourceMappingURL=index.mjs.map

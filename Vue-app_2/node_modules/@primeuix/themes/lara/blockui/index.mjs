@@ -1,0 +1,1 @@
+var r={borderRadius:"{content.border.radius}"},o={root:r};export{o as default,r as root};//# sourceMappingURL=index.mjs.map

@@ -1,0 +1,1 @@
+var o={size:"2rem",color:"{overlay.modal.color}"},e={gap:"1rem"},r={icon:o,content:e};export{e as content,r as default,o as icon};//# sourceMappingURL=index.mjs.map

@@ -1,0 +1,1 @@
+var r={gap:"1.125rem"},a={gap:"0.5rem"},css="",o={root:r,controls:a,css:""};export{a as controls,css,o as default,r as root};//# sourceMappingURL=index.mjs.map

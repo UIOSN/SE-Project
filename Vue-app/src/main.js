@@ -6,7 +6,7 @@ import Aura from '@primeuix/themes/aura';
 import PrimeVue from 'primevue/config';
 import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
-
+import Dialog from 'primevue/dialog';
 import Toast from 'primevue/toast';
 import '@/assets/styles.scss';
 
@@ -24,4 +24,5 @@ app.use(PrimeVue, {
 app.use(ToastService);
 app.use(ConfirmationService);
 app.component('Toast', Toast);
+app.component('Dialog', Dialog);
 app.mount('#app');

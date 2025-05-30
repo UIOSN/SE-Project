@@ -1,0 +1,1 @@
+var o={color:"{form.field.icon.color}"},css="",c={icon:o,css:""};export{css,c as default,o as icon};//# sourceMappingURL=index.mjs.map

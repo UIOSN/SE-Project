@@ -1,0 +1,1 @@
+var o={mask:{background:"{content.background}",color:"{text.muted.color}"},icon:{size:"2rem"}},css="",e={loader:o,css:""};export{css,e as default,o as loader};//# sourceMappingURL=index.mjs.map

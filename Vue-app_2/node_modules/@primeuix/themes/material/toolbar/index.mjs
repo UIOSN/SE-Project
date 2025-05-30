@@ -1,0 +1,1 @@
+var r={color:"{content.color}",borderRadius:"{content.border.radius}",gap:"0.5rem",padding:"1rem"},o={light:{root:{background:"{surface.100}",borderColor:"{surface.100}"}},dark:{root:{background:"{surface.800}",borderColor:"{surface.800}"}}},css="",e={root:r,colorScheme:o,css:""};export{o as colorScheme,css,e as default,r as root};//# sourceMappingURL=index.mjs.map

@@ -1,0 +1,1 @@
+var r={borderRadius:"{form.field.border.radius}"},o={light:{root:{invalidBorderColor:"{form.field.invalid.border.color}"}},dark:{root:{invalidBorderColor:"{form.field.invalid.border.color}"}}},css="",d={root:r,colorScheme:o,css:""};export{o as colorScheme,css,d as default,r as root};//# sourceMappingURL=index.mjs.map

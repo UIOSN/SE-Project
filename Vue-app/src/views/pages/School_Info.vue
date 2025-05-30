@@ -269,14 +269,14 @@ watch(
     <!-- 专业分数线和省份排名 -->
     <div class="col-span-12">
       <div class="card p-6">
-        <div class="font-semibold text-2xl mb-6 text-center text-primary">专业分数详情</div>
+        <div class="font-semibold text-2xl mb-6 text-center ">专业分数详情</div>
         <div v-if="loading" class="text-center">
           <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
           <p class="mt-4 text-lg text-color-secondary">加载中...</p>
         </div>
         <div v-else>
           <div v-for="major in majorScores" :key="major.major_name" class="flex items-center justify-between border-b border-surface-border py-4 hover:bg-surface-card transition">
-            <div class="text-lg font-bold text-primary flex-1 major-name">{{ major.major_name }}</div>
+            <div class="text-lg font-bold text-primary flex-1 major-name" >{{ major.major_name }}</div>
             <div class="flex items-center gap-4 flex-1 justify-center">
               <div class="text-sm text-color-secondary">最低分: <span class="text-lg font-semibold text-primary">{{ major.min }}</span></div>
               <div class="text-sm text-color-secondary">最高分: <span class="text-lg font-semibold text-primary">{{ major.max }}</span></div>

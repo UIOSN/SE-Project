@@ -1,0 +1,1 @@
+var style=({dt:n})=>`\n.p-blockui {\n    position: relative;\n}\n\n.p-blockui-mask {\n    border-radius: ${n("blockui.border.radius")};\n}\n\n.p-blockui-mask.p-overlay-mask {\n    position: absolute;\n}\n\n.p-blockui-mask-document.p-overlay-mask {\n    position: fixed;\n}\n`;export{style};//# sourceMappingURL=index.mjs.map

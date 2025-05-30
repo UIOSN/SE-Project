@@ -1,0 +1,1 @@
+var o={light:{root:{colorOne:"{red.500}",colorTwo:"{blue.500}",colorThree:"{green.500}",colorFour:"{yellow.500}"}},dark:{root:{colorOne:"{red.400}",colorTwo:"{blue.400}",colorThree:"{green.400}",colorFour:"{yellow.400}"}}},css="",r={colorScheme:o,css:""};export{o as colorScheme,css,r as default};//# sourceMappingURL=index.mjs.map
