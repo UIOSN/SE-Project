@@ -1,5 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useToast } from 'primevue/usetoast';
+
+const toast = useToast();
 
 const universities = ref([]);
 
@@ -33,8 +36,136 @@ const fetchUniversities = async () => {
   }
 };
 
-onMounted(() => {
-  fetchUniversities();
+// 收藏状态管理
+const favoriteStatus = ref(new Map());
+
+// 检查用户是否已登录
+const isLoggedIn = computed(() => {
+  return localStorage.getItem('token') !== null;
+});
+
+// 检查院校收藏状态
+const checkFavoriteStatus = async (schoolId) => {
+  if (!isLoggedIn.value) return false;
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:3000/api/user/favorites/check/${schoolId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const result = await response.json();
+    return result.success ? result.isFavorited : false;
+  } catch (error) {
+    console.error('检查收藏状态失败:', error);
+    return false;
+  }
+};
+
+// 批量检查收藏状态
+const updateFavoriteStatuses = async () => {
+  if (!isLoggedIn.value) return;
+  
+  for (const uni of universities.value) {
+    const isFavorited = await checkFavoriteStatus(uni.school_id);
+    favoriteStatus.value.set(uni.school_id, isFavorited);
+  }
+};
+
+// 切换收藏状态
+const toggleFavorite = async (university) => {
+  if (!isLoggedIn.value) {
+    toast.add({
+      severity: 'warn',
+      summary: '未登录',
+      detail: '请先登录后再收藏院校',
+      life: 3000
+    });
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const schoolId = university.school_id;
+    const isFavorited = favoriteStatus.value.get(schoolId);
+
+    console.log('院校数据调试:', university);
+
+    if (isFavorited) {
+      // 取消收藏
+      const response = await fetch(`http://localhost:3000/api/user/favorites/${schoolId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        favoriteStatus.value.set(schoolId, false);
+        toast.add({
+          severity: 'success',
+          summary: '操作成功',
+          detail: '已取消收藏',
+          life: 3000
+        });
+      } else {
+        throw new Error(result.message);
+      }
+    } else {
+      // 添加收藏 - 更严格地处理数据
+      const favoriteData = {
+        school_id: university.school_id || null,
+        school_name: university.school_name || null,
+        province_name: university.province_name || null,
+        school_type: university.school_type || null,
+        is985: university.is985 === true || university.is985 === 1,
+        is211: university.is211 === true || university.is211 === 1,
+        score: university.score ? parseInt(university.score, 10) : null,
+        rank_num: university.rank ? parseInt(university.rank, 10) : null
+      };
+
+      console.log('发送收藏数据:', favoriteData);
+
+      const response = await fetch('http://localhost:3000/api/user/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(favoriteData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        favoriteStatus.value.set(schoolId, true);
+        toast.add({
+          severity: 'success',
+          summary: '收藏成功',
+          detail: '已添加到我的收藏',
+          life: 3000
+        });
+      } else {
+        throw new Error(result.message);
+      }
+    }
+  } catch (error) {
+    console.error('收藏操作失败:', error);
+    toast.add({
+      severity: 'error',
+      summary: '操作失败',
+      detail: error.message || '收藏操作失败，请重试',
+      life: 3000
+    });
+  }
+};
+
+onMounted(async () => {
+  await fetchUniversities();
+  await updateFavoriteStatuses();
+  
   console.log('Selected Tags on Mount:', selectedTags.value);
 
   // Debugging Avatar component
@@ -223,10 +354,12 @@ function onTagsChange(val) {
               />
             </router-link>
             <Button 
-              label="收藏" 
-              icon="pi pi-star" 
-              severity="help"
-              outlined
+              :label="favoriteStatus.get(uni.school_id) ? '已收藏' : '收藏'" 
+              :icon="favoriteStatus.get(uni.school_id) ? 'pi pi-heart-fill' : 'pi pi-heart'" 
+              :severity="favoriteStatus.get(uni.school_id) ? 'danger' : 'help'"
+              :outlined="!favoriteStatus.get(uni.school_id)"
+              @click="toggleFavorite(uni)"
+              :disabled="!isLoggedIn"
             />
           </div>
         </template>

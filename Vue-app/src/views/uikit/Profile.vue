@@ -18,9 +18,11 @@ const user = ref({
     realName: '',
     location: '',
     bio: '高考考生'
-  },
-  favorites: [1, 3, 4], // 收藏的院校ID（后续可以从数据库读取）
+  }
 });
+
+// 用户收藏的院校（从API获取）
+const favoriteUniversities = ref([]);
 
 // 用户填写的学生信息
 const userFormData = ref({
@@ -223,6 +225,10 @@ onMounted(async () => {
     } else {
       throw new Error(result.message || '获取用户信息失败');
     }
+
+    // 获取用户收藏列表
+    await loadFavorites();
+    
   } catch (error) {
     console.error('获取用户信息失败:', error);
     toast.add({
@@ -242,6 +248,33 @@ onMounted(async () => {
     }
   }
 });
+
+// 加载收藏列表
+const loadFavorites = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const response = await fetch('http://localhost:3000/api/user/favorites', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      favoriteUniversities.value = result.data;
+    } else {
+      throw new Error(result.message || '获取收藏列表失败');
+    }
+  } catch (error) {
+    console.error('获取收藏列表失败:', error);
+    // 不显示错误消息，静默失败
+    favoriteUniversities.value = [];
+  }
+};
 
 // 辅助函数：获取地区名称
 const getRegionName = (code) => {
@@ -282,13 +315,6 @@ const hasUserInfo = computed(() => {
   return userFormData.value.name && userFormData.value.score;
 });
 
-// 获取用户收藏的院校（保持原有功能）
-const favoriteUniversities = computed(() => {
-  return universities.value.filter(uni => 
-    user.value.favorites.includes(uni.id)
-  );
-});
-
 // 标签颜色映射（保持原有）
 const tagSeverity = {
   '985': 'warn',
@@ -296,15 +322,40 @@ const tagSeverity = {
   '双一流': 'primary'
 };
 
-// 取消收藏（保持原有功能）
-const removeFavorite = (universityId) => {
-  const index = user.value.favorites.indexOf(universityId);
-  if (index !== -1) {
-    user.value.favorites.splice(index, 1);
+// 取消收藏
+const removeFavorite = async (schoolId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:3000/api/user/favorites/${schoolId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      // 从列表中移除
+      favoriteUniversities.value = favoriteUniversities.value.filter(
+        uni => uni.school_id !== schoolId
+      );
+      
+      toast.add({
+        severity: 'success',
+        summary: '操作成功',
+        detail: '已取消收藏',
+        life: 3000
+      });
+    } else {
+      throw new Error(result.message);
+    }
+  } catch (error) {
+    console.error('取消收藏失败:', error);
     toast.add({
-      severity: 'success',
-      summary: '操作成功',
-      detail: '已取消收藏',
+      severity: 'error',
+      summary: '操作失败',
+      detail: error.message || '取消收藏失败，请重试',
       life: 3000
     });
   }
@@ -562,7 +613,7 @@ const formatDate = (dateString) => {
                 <i class="pi pi-heart-fill"></i>
               </div>
               <div class="stat-content">
-                <div class="stat-number">{{ user.favorites.length }}</div>
+                <div class="stat-number">{{ favoriteUniversities.length }}</div>
                 <div class="stat-label">收藏院校</div>
               </div>
             </div>
@@ -620,28 +671,28 @@ const formatDate = (dateString) => {
         <div v-if="favoriteUniversities.length > 0" class="universities-grid">
           <Card 
             v-for="uni in favoriteUniversities" 
-            :key="uni.id" 
+            :key="uni.school_id" 
             class="university-card"
           >
             <template #header>
               <div class="university-header">
                 <div class="university-avatar-wrapper">
-                  <Avatar 
-                    :image="uni.logo" 
-                    :label="uni.name[0]" 
-                    size="large" 
-                    shape="circle"
-                    class="university-avatar"
+                  <!-- 直接使用img标签，与SearchDoc.vue保持一致 -->
+                  <img 
+                    :src="uni.logo" 
+                    :alt="uni.school_name + ' logo'" 
+                    class="university-avatar-img"
+                    @error="$event.target.src = '/logo/default.jpg'"
                   />
                   <div class="university-badge">
                     <i class="pi pi-verified"></i>
                   </div>
                 </div>
                 <div class="university-info">
-                  <h3 class="university-name">{{ uni.name }}</h3>
+                  <h3 class="university-name">{{ uni.school_name }}</h3>
                   <p class="university-location">
                     <i class="pi pi-map-marker"></i>
-                    {{ uni.location }}
+                    {{ uni.province_name }}
                   </p>
                 </div>
               </div>
@@ -667,7 +718,7 @@ const formatDate = (dateString) => {
                 
                 <!-- 院校数据 -->
                 <div class="university-stats">
-                  <div class="stat-box score-stat">
+                  <div v-if="uni.score" class="stat-box score-stat">
                     <div class="stat-icon-small">
                       <i class="pi pi-chart-line"></i>
                     </div>
@@ -676,7 +727,7 @@ const formatDate = (dateString) => {
                       <div class="stat-desc">最低分数线</div>
                     </div>
                   </div>
-                  <div class="stat-box rank-stat">
+                  <div v-if="uni.rank" class="stat-box rank-stat">
                     <div class="stat-icon-small">
                       <i class="pi pi-trophy"></i>
                     </div>
@@ -691,7 +742,7 @@ const formatDate = (dateString) => {
 
             <template #footer>
               <div class="university-actions">
-                <router-link :to="'/school_info/' + uni.id">
+                <router-link :to="'/school_info/' + uni.school_id">
                   <Button 
                     label="查看详情" 
                     icon="pi pi-info-circle" 
@@ -706,7 +757,7 @@ const formatDate = (dateString) => {
                   severity="danger"
                   outlined
                   size="small"
-                  @click="removeFavorite(uni.id)"
+                  @click="removeFavorite(uni.school_id)"
                 />
               </div>
             </template>
@@ -715,13 +766,9 @@ const formatDate = (dateString) => {
 
         <div v-else class="empty-state">
           <div class="empty-illustration">
-            <div class="empty-icon">
-              <i class="pi pi-heart"></i>
-            </div>
+            
             <div class="empty-sparkles">
               <i class="pi pi-star-fill sparkle-1"></i>
-              <i class="pi pi-star-fill sparkle-2"></i>
-              <i class="pi pi-star-fill sparkle-3"></i>
             </div>
           </div>
           <h3 class="empty-title">暂无收藏院校</h3>

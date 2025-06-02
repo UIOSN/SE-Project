@@ -362,17 +362,12 @@ app.get('/api/user/profile', async (req, res) => {
     res.status(500).json({ success: false, message: '获取失败' });
   }
 });
+//dify 调用API
 
-// **保存用户填写信息API** - 也需要修复
-app.post('/api/user/info', async (req, res) => {
+
+// **添加收藏院校API**
+app.post('/api/user/favorites', async (req, res) => {
   try {
-    const { 
-      name, score, region, rank, 
-      selectedSubjects, preferredMajors, 
-      preferredRegions, isArtStudent, remarks 
-    } = req.body;
-    
-    // 从JWT token获取用户ID
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({ success: false, message: '请先登录' });
@@ -380,72 +375,115 @@ app.post('/api/user/info', async (req, res) => {
     
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
-
-    // 基本验证
-    if (!name || !score || !region) {
+    
+    const { 
+      school_id, 
+      school_name, 
+      province_name, 
+      school_type, 
+      is985, 
+      is211, 
+      score, 
+      rank_num 
+    } = req.body;
+    
+    // 打印调试信息
+    console.log('收到的收藏数据:', {
+      school_id, 
+      school_name, 
+      province_name, 
+      school_type, 
+      is985, 
+      is211, 
+      score, 
+      rank_num
+    });
+    
+    if (!school_id || !school_name) {
       return res.status(400).json({ 
         success: false, 
-        message: '姓名、分数和地区是必填项' 
+        message: '院校ID和名称是必填的' 
       });
     }
 
-    // 确保数组字段正确转换为JSON字符串
-    const safeStringifyArray = (arr) => {
-      if (!arr || !Array.isArray(arr)) return JSON.stringify([]);
-      return JSON.stringify(arr);
-    };
-
-    // 检查是否已有记录，有则更新，没有则插入
+    // 检查是否已经收藏
     const [existing] = await pool.execute(
-      'SELECT id FROM student_info WHERE user_id = ?',
-      [userId]
+      'SELECT id FROM user_favorites WHERE user_id = ? AND school_id = ?',
+      [userId, school_id]
     );
 
     if (existing.length > 0) {
-      // 更新现有记录
-      await pool.execute(`
-        UPDATE student_info SET 
-          name = ?, score = ?, region = ?, rank_in_region = ?,
-          selected_subjects = ?, preferred_majors = ?, 
-          preferred_regions = ?, is_art_student = ?, 
-          remarks = ?, updated_at = NOW()
-        WHERE user_id = ?
-      `, [
-        name, score, region, rank,
-        safeStringifyArray(selectedSubjects), 
-        safeStringifyArray(preferredMajors),
-        safeStringifyArray(preferredRegions), 
-        isArtStudent, remarks, userId
-      ]);
-    } else {
-      // 插入新记录
-      await pool.execute(`
-        INSERT INTO student_info (
-          user_id, name, score, region, rank_in_region,
-          selected_subjects, preferred_majors, 
-          preferred_regions, is_art_student, remarks
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        userId, name, score, region, rank,
-        safeStringifyArray(selectedSubjects), 
-        safeStringifyArray(preferredMajors),
-        safeStringifyArray(preferredRegions), 
-        isArtStudent, remarks
-      ]);
+      return res.status(400).json({ 
+        success: false, 
+        message: '该院校已在收藏列表中' 
+      });
     }
 
-    res.json({ success: true, message: '信息保存成功' });
+    // 更严格地处理所有可能的 undefined 值
+    const safeSchoolId = school_id || null;
+    const safeSchoolName = school_name || null;
+    const safeProvinceName = province_name === undefined ? null : province_name;
+    const safeSchoolType = school_type === undefined ? null : school_type;
+    const safeIs985 = is985 === true || is985 === 1 ? 1 : 0;
+    const safeIs211 = is211 === true || is211 === 1 ? 1 : 0;
+    const safeScore = (score === undefined || score === null || score === '') ? null : parseInt(score, 10);
+    const safeRankNum = (rank_num === undefined || rank_num === null || rank_num === '') ? null : parseInt(rank_num, 10);
+
+    console.log('处理后的安全值:', {
+      userId,
+      safeSchoolId,
+      safeSchoolName,
+      safeProvinceName,
+      safeSchoolType,
+      safeIs985,
+      safeIs211,
+      safeScore,
+      safeRankNum
+    });
+
+    // 验证所有参数都不是 undefined
+    const params = [
+      userId,
+      safeSchoolId,
+      safeSchoolName,
+      safeProvinceName,
+      safeSchoolType,
+      safeIs985,
+      safeIs211,
+      safeScore,
+      safeRankNum
+    ];
+
+    // 检查是否有 undefined 值
+    const hasUndefined = params.some(param => param === undefined);
+    if (hasUndefined) {
+      console.error('参数中包含 undefined 值:', params);
+      return res.status(400).json({ 
+        success: false, 
+        message: '数据格式错误' 
+      });
+    }
+
+    // 添加收藏
+    await pool.execute(`
+      INSERT INTO user_favorites (
+        user_id, school_id, school_name, province_name, 
+        school_type, is985, is211, score, rank_num
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, params);
+
+    res.json({ success: true, message: '收藏成功' });
   } catch (error) {
-    console.error('保存用户信息失败:', error);
+    console.error('添加收藏失败:', error);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ success: false, message: '无效的登录状态' });
     }
-    res.status(500).json({ success: false, message: '保存失败' });
+    res.status(500).json({ success: false, message: '收藏失败' });
   }
 });
 
-// **获取用户填写信息API** - 也需要修复
-app.get('/api/user/info', async (req, res) => {
+// **获取用户收藏列表API**
+app.get('/api/user/favorites', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
@@ -455,54 +493,34 @@ app.get('/api/user/info', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
 
-    const [rows] = await pool.execute(
-      'SELECT * FROM student_info WHERE user_id = ?',
-      [userId]
-    );
+    const [rows] = await pool.execute(`
+      SELECT * FROM user_favorites 
+      WHERE user_id = ? 
+      ORDER BY created_at DESC
+    `, [userId]);
 
-    if (rows.length > 0) {
-      const info = rows[0];
-      
-      // 使用相同的安全解析函数
-      const safeParseJSON = (jsonString) => {
-        if (!jsonString) return [];
-        try {
-          if (Array.isArray(jsonString)) return jsonString;
-          if (typeof jsonString === 'string') {
-            try {
-              return JSON.parse(jsonString);
-            } catch {
-              return jsonString.split(',').filter(item => item.trim() !== '');
-            }
-          }
-          return [];
-        } catch (error) {
-          console.error('JSON解析失败:', error);
-          return [];
-        }
-      };
+    // 转换数据格式以匹配前端期望
+    const favorites = rows.map(row => ({
+      id: row.school_id,
+      school_id: row.school_id,
+      name: row.school_name,
+      school_name: row.school_name,
+      location: row.province_name,
+      province_name: row.province_name,
+      school_type: row.school_type,
+      tags: [
+        ...(row.is985 ? ['985'] : []),
+        ...(row.is211 ? ['211'] : [])
+      ],
+      score: row.score,
+      rank: row.rank_num,
+      logo: `/logo/${row.school_id}.jpg`,
+      created_at: row.created_at
+    }));
 
-      res.json({
-        success: true,
-        data: {
-          name: info.name,
-          score: info.score,
-          region: info.region,
-          rank: info.rank_in_region,
-          selectedSubjects: safeParseJSON(info.selected_subjects),
-          preferredMajors: safeParseJSON(info.preferred_majors),
-          preferredRegions: safeParseJSON(info.preferred_regions),
-          isArtStudent: info.is_art_student,
-          remarks: info.remarks,
-          createdAt: info.created_at,
-          updatedAt: info.updated_at
-        }
-      });
-    } else {
-      res.json({ success: false, message: '暂无用户信息' });
-    }
+    res.json({ success: true, data: favorites });
   } catch (error) {
-    console.error('获取用户信息失败:', error);
+    console.error('获取收藏列表失败:', error);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ success: false, message: '无效的登录状态' });
     }
@@ -510,8 +528,8 @@ app.get('/api/user/info', async (req, res) => {
   }
 });
 
-// **检查用户信息完整性API**
-app.get('/api/user/info/status', async (req, res) => {
+// **删除收藏院校API**
+app.delete('/api/user/favorites/:schoolId', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
@@ -520,125 +538,59 @@ app.get('/api/user/info/status', async (req, res) => {
     
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
+    const schoolId = req.params.schoolId;
 
-    const [rows] = await pool.execute(
-      'SELECT name, score, region FROM student_info WHERE user_id = ?',
-      [userId]
+    const [result] = await pool.execute(
+      'DELETE FROM user_favorites WHERE user_id = ? AND school_id = ?',
+      [userId, schoolId]
     );
 
-    const hasInfo = rows.length > 0 && rows[0].name && rows[0].score && rows[0].region;
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: '该院校不在收藏列表中' 
+      });
+    }
+
+    res.json({ success: true, message: '取消收藏成功' });
+  } catch (error) {
+    console.error('取消收藏失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '取消收藏失败' });
+  }
+});
+
+// **检查院校是否已收藏API**
+app.get('/api/user/favorites/check/:schoolId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
     
-    res.json({
-      success: true,
-      hasCompleteInfo: hasInfo,
-      message: hasInfo ? '信息已完善' : '信息待完善'
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    const schoolId = req.params.schoolId;
+
+    const [rows] = await pool.execute(
+      'SELECT id FROM user_favorites WHERE user_id = ? AND school_id = ?',
+      [userId, schoolId]
+    );
+
+    res.json({ 
+      success: true, 
+      isFavorited: rows.length > 0 
     });
   } catch (error) {
-    console.error('检查用户信息状态失败:', error);
+    console.error('检查收藏状态失败:', error);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ success: false, message: '无效的登录状态' });
     }
     res.status(500).json({ success: false, message: '检查失败' });
   }
 });
-
-// **获取用户基本信息API**
-app.get('/api/user/profile', async (req, res) => {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ success: false, message: '请先登录' });
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId;
-
-    // 获取用户基本信息
-    const [userRows] = await pool.execute(
-      'SELECT id, name, email, phone, user_type, created_at FROM users WHERE id = ?',
-      [userId]
-    );
-
-    if (userRows.length === 0) {
-      return res.status(404).json({ success: false, message: '用户不存在' });
-    }
-
-    const user = userRows[0];
-
-    // 获取用户填写的学生信息（如果有）
-    const [studentRows] = await pool.execute(
-      'SELECT * FROM student_info WHERE user_id = ?',
-      [userId]
-    );
-
-    let studentInfo = null;
-    if (studentRows.length > 0) {
-      const row = studentRows[0];
-      
-      // 安全解析JSON字段的函数
-      const safeParseJSON = (jsonString) => {
-        if (!jsonString) return [];
-        try {
-          // 如果已经是数组，直接返回
-          if (Array.isArray(jsonString)) return jsonString;
-          
-          // 如果是JSON字符串，解析它
-          if (typeof jsonString === 'string') {
-            // 先尝试直接解析JSON
-            try {
-              return JSON.parse(jsonString);
-            } catch {
-              // 如果失败，可能是逗号分隔的字符串，转换为数组
-              return jsonString.split(',').filter(item => item.trim() !== '');
-            }
-          }
-          
-          return [];
-        } catch (error) {
-          console.error('JSON解析失败:', error, 'Original data:', jsonString);
-          return [];
-        }
-      };
-
-      studentInfo = {
-        name: row.name,
-        score: row.score,
-        region: row.region,
-        rank: row.rank_in_region,
-        selectedSubjects: safeParseJSON(row.selected_subjects),
-        preferredMajors: safeParseJSON(row.preferred_majors),
-        preferredRegions: safeParseJSON(row.preferred_regions),
-        isArtStudent: row.is_art_student,
-        remarks: row.remarks,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      };
-    }
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          username: user.name,
-          email: user.email,
-          phone: user.phone,
-          userType: user.user_type,
-          createdAt: user.created_at
-        },
-        studentInfo: studentInfo
-      }
-    });
-  } catch (error) {
-    console.error('获取用户资料失败:', error);
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ success: false, message: '无效的登录状态' });
-    }
-    res.status(500).json({ success: false, message: '获取失败' });
-  }
-});
-//dify 调用API
-
 
 app.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
