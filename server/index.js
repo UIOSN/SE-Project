@@ -364,7 +364,185 @@ app.get('/api/user/profile', async (req, res) => {
 });
 //dify 调用API
 
+// **保存/更新用户学生信息API**
+app.post('/api/user/info', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    
+    const {
+      name,
+      score,
+      region,
+      rank,
+      selectedSubjects,
+      preferredMajors,
+      preferredRegions,
+      isArtStudent,
+      remarks
+    } = req.body;
+    
+    console.log('收到的学生信息数据:', req.body);
+    
+    // 验证必填字段
+    if (!name || !score || !region) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '姓名、分数、地区为必填字段' 
+      });
+    }
 
+    // 检查用户是否已经有学生信息
+    const [existing] = await pool.execute(
+      'SELECT id FROM student_info WHERE user_id = ?',
+      [userId]
+    );
+
+    // 安全处理数组数据，确保为有效的JSON
+    const safeStringify = (data) => {
+      if (!data || !Array.isArray(data)) return JSON.stringify([]);
+      return JSON.stringify(data);
+    };
+
+    if (existing.length > 0) {
+      // 更新现有信息
+      await pool.execute(`
+        UPDATE student_info SET 
+          name = ?, score = ?, region = ?, rank_in_region = ?,
+          selected_subjects = ?, preferred_majors = ?, preferred_regions = ?,
+          is_art_student = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+      `, [
+        name, 
+        score, 
+        region, 
+        rank || null,
+        safeStringify(selectedSubjects),
+        safeStringify(preferredMajors),
+        safeStringify(preferredRegions),
+        isArtStudent || false,
+        remarks || null,
+        userId
+      ]);
+
+      console.log('更新学生信息成功');
+    } else {
+      // 插入新信息
+      await pool.execute(`
+        INSERT INTO student_info (
+          user_id, name, score, region, rank_in_region,
+          selected_subjects, preferred_majors, preferred_regions,
+          is_art_student, remarks
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        userId, 
+        name, 
+        score, 
+        region, 
+        rank || null,
+        safeStringify(selectedSubjects),
+        safeStringify(preferredMajors),
+        safeStringify(preferredRegions),
+        isArtStudent || false,
+        remarks || null
+      ]);
+
+      console.log('插入学生信息成功');
+    }
+
+    res.json({ 
+      success: true, 
+      message: '信息保存成功' 
+    });
+
+  } catch (error) {
+    console.error('保存学生信息失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '保存失败，请重试' });
+  }
+});
+
+// **获取用户学生信息API**
+app.get('/api/user/info', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM student_info WHERE user_id = ?',
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.json({ 
+        success: true, 
+        data: null,
+        message: '暂无学生信息' 
+      });
+    }
+
+    const row = rows[0];
+    
+    // 安全解析JSON字段
+    const safeParseJSON = (jsonString) => {
+      if (!jsonString) return [];
+      try {
+        // 如果已经是数组，直接返回
+        if (Array.isArray(jsonString)) return jsonString;
+        
+        // 如果是JSON字符串，解析它
+        if (typeof jsonString === 'string') {
+          return JSON.parse(jsonString);
+        }
+        
+        return [];
+      } catch (error) {
+        console.error('JSON解析失败:', error, 'Original data:', jsonString);
+        return [];
+      }
+    };
+
+    const studentInfo = {
+      name: row.name,
+      score: row.score,
+      region: row.region,
+      rank: row.rank_in_region,
+      selectedSubjects: safeParseJSON(row.selected_subjects),
+      preferredMajors: safeParseJSON(row.preferred_majors),
+      preferredRegions: safeParseJSON(row.preferred_regions),
+      isArtStudent: Boolean(row.is_art_student),
+      remarks: row.remarks,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+
+    console.log('返回的学生信息:', studentInfo);
+
+    res.json({ 
+      success: true, 
+      data: studentInfo 
+    });
+
+  } catch (error) {
+    console.error('获取学生信息失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '获取失败' });
+  }
+});
 // **添加收藏院校API**
 app.post('/api/user/favorites', async (req, res) => {
   try {
