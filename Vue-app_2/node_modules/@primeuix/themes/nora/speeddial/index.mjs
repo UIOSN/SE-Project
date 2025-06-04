@@ -1,1 +1,0 @@
-var t={gap:"0.5rem",transitionDuration:"{transition.duration}"},a={root:t};export{a as default,t as root};//# sourceMappingURL=index.mjs.map
