@@ -19,7 +19,7 @@ const dbConfig = {
   database: 'se_project',
   charset: 'utf8mb4',
   port: 3306,
-  connectTimeout:60000,
+  connectTimeout:10000,
 };
 
 // **JWT密钥** - 生产环境请使用环境变量
@@ -543,7 +543,7 @@ app.get('/api/user/info', async (req, res) => {
     res.status(500).json({ success: false, message: '获取失败' });
   }
 });
-// **添加收藏院校API**
+// **添加收藏院校API** - 从school_info表获取985/211信息
 app.post('/api/user/favorites', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -559,20 +559,15 @@ app.post('/api/user/favorites', async (req, res) => {
       school_name, 
       province_name, 
       school_type, 
-      is985, 
-      is211, 
       score, 
       rank_num 
     } = req.body;
     
-    // 打印调试信息
     console.log('收到的收藏数据:', {
       school_id, 
       school_name, 
       province_name, 
       school_type, 
-      is985, 
-      is211, 
       score, 
       rank_num
     });
@@ -597,50 +592,63 @@ app.post('/api/user/favorites', async (req, res) => {
       });
     }
 
-    // 更严格地处理所有可能的 undefined 值
-    const safeSchoolId = school_id || null;
-    const safeSchoolName = school_name || null;
-    const safeProvinceName = province_name === undefined ? null : province_name;
-    const safeSchoolType = school_type === undefined ? null : school_type;
-    const safeIs985 = is985 === true || is985 === 1 ? 1 : 0;
-    const safeIs211 = is211 === true || is211 === 1 ? 1 : 0;
-    const safeScore = (score === undefined || score === null || score === '') ? null : parseInt(score, 10);
-    const safeRankNum = (rank_num === undefined || rank_num === null || rank_num === '') ? null : parseInt(rank_num, 10);
+    // 从school_info表获取985/211信息
+    let is985 = 0;
+    let is211 = 0;
+    
+    try {
+      const gkvrConnection = await mysql.createConnection({
+        host: "117.72.218.50",
+        user: "pan", 
+        password: "123456",
+        database: "gkvr_system"
+      });
 
-    console.log('处理后的安全值:', {
-      userId,
-      safeSchoolId,
-      safeSchoolName,
-      safeProvinceName,
-      safeSchoolType,
-      safeIs985,
-      safeIs211,
-      safeScore,
-      safeRankNum
-    });
+      const [schoolRows] = await gkvrConnection.execute(
+        'SELECT is985, is211 FROM school_info WHERE school_id = ?',
+        [school_id]
+      );
 
-    // 验证所有参数都不是 undefined
+      await gkvrConnection.end();
+
+      if (schoolRows.length > 0) {
+        is985 = Number(schoolRows[0].is985) || 0;
+        is211 = Number(schoolRows[0].is211) || 0;
+        
+        console.log(`从数据库获取院校 ${school_name} 的985/211信息:`, { is985, is211 });
+      } else {
+        console.log(`未找到院校 ${school_name} 的985/211信息，使用默认值`);
+      }
+    } catch (error) {
+      console.error('获取院校985/211信息失败:', error);
+      // 如果获取失败，使用默认值0
+    }
+    // 如果是985或211数字，转换为1；否则为0
+    is985 = (is985 === 985 || is985 === 1) ? 1 : 0;
+    is211 = (is211 === 211 || is211 === 1) ? 1 : 0;
     const params = [
       userId,
-      safeSchoolId,
-      safeSchoolName,
-      safeProvinceName,
-      safeSchoolType,
-      safeIs985,
-      safeIs211,
-      safeScore,
-      safeRankNum
+      school_id,
+      school_name || null,
+      province_name || null,
+      school_type || null,
+      is985,
+      is211,
+      score ? parseInt(score, 10) : null,
+      rank_num ? parseInt(rank_num, 10) : null
     ];
 
-    // 检查是否有 undefined 值
-    const hasUndefined = params.some(param => param === undefined);
-    if (hasUndefined) {
-      console.error('参数中包含 undefined 值:', params);
-      return res.status(400).json({ 
-        success: false, 
-        message: '数据格式错误' 
-      });
-    }
+    console.log('最终插入的参数:', {
+      userId,
+      school_id,
+      school_name,
+      province_name,
+      school_type,
+      is985,
+      is211,
+      score,
+      rank_num
+    });
 
     // 添加收藏
     await pool.execute(`
@@ -678,23 +686,50 @@ app.get('/api/user/favorites', async (req, res) => {
     `, [userId]);
 
     // 转换数据格式以匹配前端期望
-    const favorites = rows.map(row => ({
-      id: row.school_id,
-      school_id: row.school_id,
-      name: row.school_name,
-      school_name: row.school_name,
-      location: row.province_name,
-      province_name: row.province_name,
-      school_type: row.school_type,
-      tags: [
-        ...(row.is985 ? ['985'] : []),
-        ...(row.is211 ? ['211'] : [])
-      ],
-      score: row.score,
-      rank: row.rank_num,
-      logo: `/logo/${row.school_id}.jpg`,
-      created_at: row.created_at
-    }));
+    const favorites = rows.map(row => {
+      // 调试：打印原始数据
+      console.log(`院校 ${row.school_name} 原始数据:`, {
+        is985: row.is985,
+        is211: row.is211,
+        is985_type: typeof row.is985,
+        is211_type: typeof row.is211
+      });
+
+      // 明确处理数字类型的布尔转换
+      const is985 = Number(row.is985) === 1;
+      const is211 = Number(row.is211) === 1;
+      
+      const tags = [
+        ...(is985 ? ['985'] : []),
+        ...(is211 ? ['211'] : [])
+      ];
+
+      console.log(`院校 ${row.school_name} 处理后标签:`, {
+        is985,
+        is211,
+        tags
+      });
+
+      return {
+        id: row.school_id,
+        school_id: row.school_id,
+        name: row.school_name,
+        school_name: row.school_name,
+        location: row.province_name,
+        province_name: row.province_name,
+        school_type: row.school_type,
+        tags: tags,
+        score: row.score,
+        rank: row.rank_num,
+        logo: `/logo/${row.school_id}.jpg`,
+        created_at: row.created_at
+      };
+    });
+
+    console.log('最终返回的收藏数据:', favorites.map(f => ({
+      school_name: f.school_name,
+      tags: f.tags
+    })));
 
     res.json({ success: true, data: favorites });
   } catch (error) {

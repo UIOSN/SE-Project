@@ -266,6 +266,16 @@ const loadFavorites = async () => {
     
     if (result.success) {
       favoriteUniversities.value = result.data;
+       // 添加调试信息
+      console.log('收藏院校数据调试:');
+      result.data.forEach((uni, index) => {
+        console.log(`院校 ${index + 1}:`, {
+          school_name: uni.school_name,
+          is985: uni.is985,
+          is211: uni.is211,
+          tags: uni.tags  // 查看 tags 数组
+        });
+      });
     } else {
       throw new Error(result.message || '获取收藏列表失败');
     }
@@ -702,6 +712,7 @@ const formatDate = (dateString) => {
               <div class="university-content">
                 <!-- 院校标签 -->
                 <div class="university-tags">
+                  
                   <Tag 
                     v-for="tag in uni.tags" 
                     :key="tag"
@@ -796,6 +807,14 @@ const formatDate = (dateString) => {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+}
+
+.university-avatar-img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--surface-border);
 }
 
 /* 个人信息卡片 */
