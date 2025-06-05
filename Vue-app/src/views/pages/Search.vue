@@ -1,7 +1,26 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useToast } from 'primevue/usetoast';
+import { useRoute } from 'vue-router';
+
+const toast = useToast();
+const route = useRoute();
 
 const universities = ref([]);
+
+// 收藏状态管理
+const favoriteStatus = ref(new Map());
+
+// 志愿表状态管理  
+const wishlistStatus = ref(new Map());
+
+// 当前添加模式的类别（从URL参数获取）
+const addCategory = ref(route.query.category || null);
+
+// 检查用户是否已登录
+const isLoggedIn = computed(() => {
+  return localStorage.getItem('token') !== null;
+});
 
 // Fetch university data from the API
 const fetchUniversities = async () => {
@@ -36,8 +55,219 @@ const fetchUniversities = async () => {
   }
 };
 
-onMounted(() => {
-  fetchUniversities();
+// 检查院校收藏状态
+const checkFavoriteStatus = async (schoolId) => {
+  if (!isLoggedIn.value) return false;
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:3000/api/user/favorites/check/${schoolId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const result = await response.json();
+    return result.success ? result.isFavorited : false;
+  } catch (error) {
+    console.error('检查收藏状态失败:', error);
+    return false;
+  }
+};
+
+// 检查院校志愿表状态
+const checkWishlistStatus = async (schoolId) => {
+  if (!isLoggedIn.value) return { inWishlist: false, category: null };
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:3000/api/user/wishlist/check/${schoolId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const result = await response.json();
+    return result.success ? { inWishlist: result.inWishlist, category: result.category } : { inWishlist: false, category: null };
+  } catch (error) {
+    console.error('检查志愿表状态失败:', error);
+    return { inWishlist: false, category: null };
+  }
+};
+
+// 批量检查收藏状态
+const updateFavoriteStatuses = async () => {
+  if (!isLoggedIn.value) return;
+  
+  for (const uni of universities.value) {
+    const isFavorited = await checkFavoriteStatus(uni.school_id);
+    favoriteStatus.value.set(uni.school_id, isFavorited);
+  }
+};
+
+// 批量检查志愿表状态
+const updateWishlistStatuses = async () => {
+  if (!isLoggedIn.value) return;
+  
+  for (const uni of universities.value) {
+    const status = await checkWishlistStatus(uni.school_id);
+    wishlistStatus.value.set(uni.school_id, status);
+  }
+};
+
+// 切换收藏状态
+const toggleFavorite = async (university) => {
+  if (!isLoggedIn.value) {
+    toast.add({
+      severity: 'warn',
+      summary: '未登录',
+      detail: '请先登录后再收藏院校',
+      life: 3000
+    });
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const schoolId = university.school_id;
+    const isFavorited = favoriteStatus.value.get(schoolId);
+
+    if (isFavorited) {
+      // 取消收藏
+      const response = await fetch(`http://localhost:3000/api/user/favorites/${schoolId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        favoriteStatus.value.set(schoolId, false);
+        toast.add({
+          severity: 'success',
+          summary: '操作成功',
+          detail: '已取消收藏',
+          life: 3000
+        });
+      } else {
+        throw new Error(result.message);
+      }
+    } else {
+      // 添加收藏
+      const favoriteData = {
+        school_id: university.school_id,
+        school_name: university.school_name || university.name,
+        province_name: university.province_name || university.location,
+        school_type: university.school_type,
+        is985: university.is985 === true || university.is985 === 1,
+        is211: university.is211 === true || university.is211 === 1,
+        score: university.score ? parseInt(university.score, 10) : null,
+        rank_num: university.rank ? parseInt(university.rank, 10) : null
+      };
+
+      const response = await fetch('http://localhost:3000/api/user/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(favoriteData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        favoriteStatus.value.set(schoolId, true);
+        toast.add({
+          severity: 'success',
+          summary: '收藏成功',
+          detail: '已添加到我的收藏',
+          life: 3000
+        });
+      } else {
+        throw new Error(result.message);
+      }
+    }
+  } catch (error) {
+    console.error('收藏操作失败:', error);
+    toast.add({
+      severity: 'error',
+      summary: '操作失败',
+      detail: error.message || '收藏操作失败，请重试',
+      life: 3000
+    });
+  }
+};
+
+// 添加到志愿表
+const addToWishlist = async (university, category = null) => {
+  if (!isLoggedIn.value) {
+    toast.add({
+      severity: 'warn',
+      summary: '未登录',
+      detail: '请先登录后再添加到志愿表',
+      life: 3000
+    });
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const targetCategory = category || addCategory.value || 'stable';
+    
+    const wishlistData = {
+      school_id: university.school_id,
+      school_name: university.school_name || university.name,
+      province_name: university.province_name || university.location,
+      school_type: university.school_type,
+      score: university.score ? parseInt(university.score, 10) : null,
+      rank_num: university.rank ? parseInt(university.rank, 10) : null,
+      category: targetCategory
+    };
+
+    const response = await fetch('http://localhost:3000/api/user/wishlist', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(wishlistData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      wishlistStatus.value.set(university.school_id, { inWishlist: true, category: targetCategory });
+      
+      const categoryNames = {
+        rush: '冲刺',
+        stable: '稳妥', 
+        safe: '保底'
+      };
+      
+      toast.add({
+        severity: 'success',
+        summary: '添加成功',
+        detail: `已添加到${categoryNames[targetCategory]}院校`,
+        life: 3000
+      });
+    } else {
+      throw new Error(result.message);
+    }
+  } catch (error) {
+    console.error('添加到志愿表失败:', error);
+    toast.add({
+      severity: 'error',
+      summary: '添加失败',
+      detail: error.message || '添加到志愿表失败，请重试',
+      life: 3000
+    });
+  }
+};
+
+onMounted(async () => {
+  await fetchUniversities();
+  await updateFavoriteStatuses();
+  await updateWishlistStatuses();
 });
 
 // 搜索和筛选状态
@@ -167,21 +397,86 @@ const tagSeverity = {
             </div>
           </div>
         </template>        <template #footer>
-          <div class="flex justify-between">
-            <router-link :to="'/school_info/' + (uni.school_id || uni.id)">
+          <div class="flex flex-col gap-2">
+            <!-- 第一行按钮 -->
+            <div class="flex justify-between">
+              <router-link :to="'/school_info/' + (uni.school_id || uni.id)">
+                <Button 
+                  label="查看详情" 
+                  icon="pi pi-info-circle" 
+                  severity="secondary"
+                  outlined
+                  size="small"
+                />
+              </router-link>
               <Button 
-                label="查看详情" 
-                icon="pi pi-info-circle" 
-                severity="secondary"
-                outlined
+                :label="favoriteStatus.get(uni.school_id) ? '已收藏' : '收藏'" 
+                :icon="favoriteStatus.get(uni.school_id) ? 'pi pi-heart-fill' : 'pi pi-heart'" 
+                :severity="favoriteStatus.get(uni.school_id) ? 'danger' : 'help'"
+                :outlined="!favoriteStatus.get(uni.school_id)"
+                @click="toggleFavorite(uni)"
+                :disabled="!isLoggedIn"
+                size="small"
               />
-            </router-link>
-            <Button 
-              label="收藏" 
-              icon="pi pi-star" 
-              severity="help"
-              outlined
-            />
+            </div>
+            
+            <!-- 第二行：志愿表按钮 -->
+            <div v-if="isLoggedIn" class="flex gap-2">
+              <!-- 如果有特定类别参数，显示单个按钮 -->
+              <template v-if="addCategory">
+                <Button 
+                  v-if="!wishlistStatus.get(uni.school_id)?.inWishlist"
+                  :label="`添加到${addCategory === 'rush' ? '冲刺' : addCategory === 'stable' ? '稳妥' : '保底'}院校`"
+                  icon="pi pi-plus" 
+                  :severity="addCategory === 'rush' ? 'info' : addCategory === 'stable' ? 'success' : 'warn'"
+                  @click="addToWishlist(uni, addCategory)"
+                  class="flex-1"
+                  size="small"
+                />
+                <Tag 
+                  v-else
+                  :value="`已在${wishlistStatus.get(uni.school_id)?.category === 'rush' ? '冲刺' : wishlistStatus.get(uni.school_id)?.category === 'stable' ? '稳妥' : '保底'}院校中`"
+                  :severity="wishlistStatus.get(uni.school_id)?.category === 'rush' ? 'info' : wishlistStatus.get(uni.school_id)?.category === 'stable' ? 'success' : 'warn'"
+                  class="flex-1"
+                />
+              </template>
+                <!-- 否则显示三个类别按钮 -->
+              <template v-else>
+                <div v-if="!wishlistStatus.get(uni.school_id)?.inWishlist" class="flex gap-1 flex-1">
+                  <Button 
+                    label="冲一冲" 
+                    icon="pi pi-arrow-up" 
+                    severity="info"
+                    @click="addToWishlist(uni, 'rush')"
+                    size="small"
+                    class="flex-1"
+                  />
+                  <Button 
+                    label="稳一稳" 
+                    icon="pi pi-check" 
+                    severity="success"
+                    @click="addToWishlist(uni, 'stable')"
+                    size="small"
+                    class="flex-1"
+                  />
+                  <Button 
+                    label="保一保" 
+                    icon="pi pi-shield" 
+                    severity="warn"
+                    @click="addToWishlist(uni, 'safe')"
+                    size="small"
+                    class="flex-1"
+                  />
+                </div>
+                <div v-else class="flex gap-1 flex-1">
+                  <Tag 
+                    :value="`已在${wishlistStatus.get(uni.school_id)?.category === 'rush' ? '冲刺' : wishlistStatus.get(uni.school_id)?.category === 'stable' ? '稳妥' : '保底'}院校中`"
+                    :severity="wishlistStatus.get(uni.school_id)?.category === 'rush' ? 'info' : wishlistStatus.get(uni.school_id)?.category === 'stable' ? 'success' : 'warn'"
+                    class="flex-1"
+                  />
+                </div>
+              </template>
+            </div>
           </div>
         </template>
       </Card>

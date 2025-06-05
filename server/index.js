@@ -859,3 +859,427 @@ app.post('/api/chat-stream', async (req, res) => {
 app.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
 });
+
+// **志愿表相关API**
+
+// **获取用户志愿表**
+app.get('/api/user/wishlist', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    const [rows] = await pool.execute(`
+      SELECT * FROM user_wishlists 
+      WHERE user_id = ? 
+      ORDER BY category, position_order, created_at ASC
+    `, [userId]);
+
+    // 按类别组织数据
+    const wishlist = {
+      rush: [],
+      stable: [],
+      safe: []
+    };
+
+    rows.forEach(row => {
+      const schoolData = {
+        id: row.school_id,
+        school_id: row.school_id,
+        name: row.school_name,
+        school_name: row.school_name,
+        location: row.province_name,
+        province_name: row.province_name,
+        school_type: row.school_type,
+        tags: [
+          ...(row.is985 ? ['985'] : []),
+          ...(row.is211 ? ['211'] : [])
+        ],
+        score: row.score,
+        rank: row.rank_num,
+        logo: `/logo/${row.school_id}.jpg`,
+        category: row.category,
+        position_order: row.position_order,
+        created_at: row.created_at
+      };
+
+      if (wishlist[row.category]) {
+        wishlist[row.category].push(schoolData);
+      }
+    });
+
+    res.json({ success: true, data: wishlist });
+  } catch (error) {
+    console.error('获取志愿表失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '获取失败' });
+  }
+});
+
+// **添加院校到志愿表**
+app.post('/api/user/wishlist', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    
+    const { 
+      school_id, 
+      school_name, 
+      province_name, 
+      school_type, 
+      score, 
+      rank_num,
+      category = 'stable'
+    } = req.body;
+    
+    if (!school_id || !school_name) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '院校ID和名称是必填的' 
+      });
+    }
+
+    // 检查是否已经在志愿表中
+    const [existing] = await pool.execute(
+      'SELECT id FROM user_wishlists WHERE user_id = ? AND school_id = ?',
+      [userId, school_id]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '该院校已在志愿表中' 
+      });
+    }
+
+    // 检查同类别院校数量限制
+    const [categoryCount] = await pool.execute(
+      'SELECT COUNT(*) as count FROM user_wishlists WHERE user_id = ? AND category = ?',
+      [userId, category]
+    );
+
+    const maxLimits = { rush: 10, stable: 15, safe: 10 };
+    if (categoryCount[0].count >= maxLimits[category]) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `${category === 'rush' ? '冲刺' : category === 'stable' ? '稳妥' : '保底'}类别最多只能添加${maxLimits[category]}所院校` 
+      });
+    }
+
+    // 从gkvr_system数据库获取985/211信息
+    let is985 = 0;
+    let is211 = 0;
+    
+    try {
+      const gkvrConnection = await mysql.createConnection({
+        host: "117.72.218.50",
+        user: "pan", 
+        password: "123456",
+        database: "gkvr_system"
+      });
+
+      const [schoolRows] = await gkvrConnection.execute(
+        'SELECT is985, is211 FROM school_info WHERE school_id = ?',
+        [school_id]
+      );
+
+      await gkvrConnection.end();
+
+      if (schoolRows.length > 0) {
+        is985 = Number(schoolRows[0].is985) || 0;
+        is211 = Number(schoolRows[0].is211) || 0;
+      }
+    } catch (error) {
+      console.error('获取院校985/211信息失败:', error);
+    }
+
+    is985 = (is985 === 985 || is985 === 1) ? 1 : 0;
+    is211 = (is211 === 211 || is211 === 1) ? 1 : 0;
+
+    // 获取当前类别的最大position_order
+    const [maxOrder] = await pool.execute(
+      'SELECT COALESCE(MAX(position_order), -1) as max_order FROM user_wishlists WHERE user_id = ? AND category = ?',
+      [userId, category]
+    );
+
+    const newOrder = maxOrder[0].max_order + 1;
+
+    // 添加到志愿表
+    await pool.execute(`
+      INSERT INTO user_wishlists (
+        user_id, school_id, school_name, province_name, 
+        school_type, is985, is211, score, rank_num, 
+        category, position_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      userId,
+      school_id,
+      school_name || null,
+      province_name || null,
+      school_type || null,
+      is985,
+      is211,
+      score ? parseInt(score, 10) : null,
+      rank_num ? parseInt(rank_num, 10) : null,
+      category,
+      newOrder
+    ]);
+
+    res.json({ success: true, message: '添加到志愿表成功' });
+  } catch (error) {
+    console.error('添加到志愿表失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '添加失败' });
+  }
+});
+
+// **从志愿表删除院校**
+app.delete('/api/user/wishlist/:schoolId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    const schoolId = req.params.schoolId;
+
+    const [result] = await pool.execute(
+      'DELETE FROM user_wishlists WHERE user_id = ? AND school_id = ?',
+      [userId, schoolId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: '该院校不在志愿表中' 
+      });
+    }
+
+    res.json({ success: true, message: '从志愿表删除成功' });
+  } catch (error) {
+    console.error('从志愿表删除失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '删除失败' });
+  }
+});
+
+// **移动院校类别**
+app.put('/api/user/wishlist/:schoolId/category', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    const schoolId = req.params.schoolId;
+    const { category } = req.body;
+
+    if (!['rush', 'stable', 'safe'].includes(category)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '无效的类别' 
+      });
+    }
+
+    // 检查目标类别院校数量限制
+    const [categoryCount] = await pool.execute(
+      'SELECT COUNT(*) as count FROM user_wishlists WHERE user_id = ? AND category = ? AND school_id != ?',
+      [userId, category, schoolId]
+    );
+
+    const maxLimits = { rush: 10, stable: 15, safe: 10 };
+    if (categoryCount[0].count >= maxLimits[category]) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `${category === 'rush' ? '冲刺' : category === 'stable' ? '稳妥' : '保底'}类别最多只能添加${maxLimits[category]}所院校` 
+      });
+    }
+
+    // 获取目标类别的最大position_order
+    const [maxOrder] = await pool.execute(
+      'SELECT COALESCE(MAX(position_order), -1) as max_order FROM user_wishlists WHERE user_id = ? AND category = ?',
+      [userId, category]
+    );
+
+    const newOrder = maxOrder[0].max_order + 1;
+
+    // 更新院校类别和排序
+    const [result] = await pool.execute(
+      'UPDATE user_wishlists SET category = ?, position_order = ? WHERE user_id = ? AND school_id = ?',
+      [category, newOrder, userId, schoolId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: '该院校不在志愿表中' 
+      });
+    }
+
+    res.json({ success: true, message: '移动成功' });
+  } catch (error) {
+    console.error('移动院校类别失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '移动失败' });
+  }
+});
+
+// **更新院校排序**
+app.put('/api/user/wishlist/reorder', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    const { category, schoolIds } = req.body;
+
+    if (!['rush', 'stable', 'safe'].includes(category) || !Array.isArray(schoolIds)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '参数错误' 
+      });
+    }
+
+    // 批量更新排序
+    for (let i = 0; i < schoolIds.length; i++) {
+      await pool.execute(
+        'UPDATE user_wishlists SET position_order = ? WHERE user_id = ? AND school_id = ? AND category = ?',
+        [i, userId, schoolIds[i], category]
+      );
+    }
+
+    res.json({ success: true, message: '排序更新成功' });
+  } catch (error) {
+    console.error('更新排序失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '排序失败' });
+  }
+});
+
+// **提交志愿表**
+app.post('/api/user/wishlist/submit', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    // 获取当前志愿表数据
+    const [wishlistRows] = await pool.execute(`
+      SELECT * FROM user_wishlists 
+      WHERE user_id = ? 
+      ORDER BY category, position_order, created_at ASC
+    `, [userId]);
+
+    if (wishlistRows.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '志愿表为空，无法提交' 
+      });
+    }
+
+    // 组织提交数据
+    const submissionData = {
+      rush: [],
+      stable: [],
+      safe: [],
+      submittedAt: new Date().toISOString()
+    };
+
+    wishlistRows.forEach(row => {
+      const schoolData = {
+        school_id: row.school_id,
+        school_name: row.school_name,
+        province_name: row.province_name,
+        school_type: row.school_type,
+        is985: row.is985,
+        is211: row.is211,
+        score: row.score,
+        rank_num: row.rank_num,
+        position_order: row.position_order
+      };
+
+      if (submissionData[row.category]) {
+        submissionData[row.category].push(schoolData);
+      }
+    });
+
+    // 保存提交记录
+    await pool.execute(`
+      INSERT INTO wishlist_submissions (user_id, submission_data, status)
+      VALUES (?, ?, 'submitted')
+    `, [userId, JSON.stringify(submissionData)]);
+
+    res.json({ 
+      success: true, 
+      message: '志愿表提交成功',
+      data: submissionData
+    });
+  } catch (error) {
+    console.error('提交志愿表失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '提交失败' });
+  }
+});
+
+// **检查院校是否在志愿表中**
+app.get('/api/user/wishlist/check/:schoolId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    const schoolId = req.params.schoolId;
+
+    const [rows] = await pool.execute(
+      'SELECT category FROM user_wishlists WHERE user_id = ? AND school_id = ?',
+      [userId, schoolId]
+    );
+
+    res.json({ 
+      success: true, 
+      inWishlist: rows.length > 0,
+      category: rows.length > 0 ? rows[0].category : null
+    });
+  } catch (error) {
+    console.error('检查志愿表状态失败:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: '无效的登录状态' });
+    }
+    res.status(500).json({ success: false, message: '检查失败' });
+  }
+});
