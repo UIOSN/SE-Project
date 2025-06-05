@@ -266,22 +266,6 @@ const loadFavorites = async () => {
     
     if (result.success) {
       favoriteUniversities.value = result.data;
-      for(let uni of favoriteUniversities.value) {
-        // 确保每个院校都有logo，如果没有则使用默认logo
-        console.log("tags:",uni.tags);
-        console.log("logo:", uni.logo);
-        console.log("school_id:", uni.school_id);
-      }
-       // 添加调试信息
-      console.log('收藏院校数据调试:');
-      result.data.forEach((uni, index) => {
-        console.log(`院校 ${index + 1}:`, {
-          school_name: uni.school_name,
-          is985: uni.is985,
-          is211: uni.is211,
-          tags: uni.tags  // 查看 tags 数组
-        });
-      });
     } else {
       throw new Error(result.message || '获取收藏列表失败');
     }
@@ -743,9 +727,9 @@ const formatDate = (dateString) => {
             <template #content>
               <!-- <div class="university-content"> -->
                 <!-- 院校标签 -->
-                <div class="university-tags">
+                
                   
-                <!-- <div class="university-tags">
+                <div class="university-tags">
                   <Tag 
                     v-for="tag in uni.tags" 
                     :key="tag"
@@ -758,7 +742,7 @@ const formatDate = (dateString) => {
                       {{ tag }}
                     </template>
                   </Tag>
-                </div> -->
+                </div>
                 <!-- 院校标签 -->
               <div class="flex flex-wrap gap-2">
                 <Tag 
