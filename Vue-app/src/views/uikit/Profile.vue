@@ -266,6 +266,12 @@ const loadFavorites = async () => {
     
     if (result.success) {
       favoriteUniversities.value = result.data;
+      for(let uni of favoriteUniversities.value) {
+        // 确保每个院校都有logo，如果没有则使用默认logo
+        console.log("tags:",uni.tags);
+        console.log("logo:", uni.logo);
+        console.log("school_id:", uni.school_id);
+      }
     } else {
       throw new Error(result.message || '获取收藏列表失败');
     }
@@ -659,11 +665,27 @@ const formatDate = (dateString) => {
               <i class="pi pi-heart-fill"></i>
             </div>
             我的收藏院校
+
+            
           </div>
-          <div class="section-count">
+          <!-- <div class=""section-count>
             <i class="pi pi-bookmark mr-1"></i>
-            共 {{ favoriteUniversities.length }} 所院校
+            共 {{ favoriteUniversities.length }} 所
+          </div> -->
+          <div class="section-count">
+            
+            
+            <router-link to="/search">
+            <Button 
+              label="发现更多" 
+              icon="pi pi-search" 
+              class="empty-action"
+              size="large"
+              severity="secondary"
+            />
+          </router-link>
           </div>
+
         </div>
       </template>
       
@@ -694,14 +716,24 @@ const formatDate = (dateString) => {
                     <i class="pi pi-map-marker"></i>
                     {{ uni.province_name }}
                   </p>
+                  <div class="flex flex-wrap gap-2">
+                <Tag 
+                  v-for="tag in uni.tags" 
+                  :key="tag"
+                  :value="tag"
+                  :severity="tagSeverity[tag]"
+                  :rounded="true"
+                  class="university-tag"
+                />
+              </div>
                 </div>
               </div>
             </template>
             
             <template #content>
-              <div class="university-content">
+              <!-- <div class="university-content"> -->
                 <!-- 院校标签 -->
-                <div class="university-tags">
+                <!-- <div class="university-tags">
                   <Tag 
                     v-for="tag in uni.tags" 
                     :key="tag"
@@ -714,9 +746,18 @@ const formatDate = (dateString) => {
                       {{ tag }}
                     </template>
                   </Tag>
-                </div>
-                
-                <!-- 院校数据 -->
+                </div> -->
+                <!-- 院校标签 -->
+              <div class="flex flex-wrap gap-2">
+                <Tag 
+                  v-for="tag in uni.tags" 
+                  :key="tag"
+                  :value="tag"
+                  :severity="tagSeverity[tag]"
+                  :rounded="true"
+                />
+              </div>
+                <!-- 院校数据
                 <div class="university-stats">
                   <div v-if="uni.score" class="stat-box score-stat">
                     <div class="stat-icon-small">
@@ -736,8 +777,8 @@ const formatDate = (dateString) => {
                       <div class="stat-desc">全国排名</div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </div> -->
+              <!-- </div> -->
             </template>
 
             <template #footer>
@@ -761,9 +802,12 @@ const formatDate = (dateString) => {
                 />
               </div>
             </template>
+            
           </Card>
-        </div>
 
+          
+        </div>
+        
         <div v-else class="empty-state">
           <div class="empty-illustration">
             

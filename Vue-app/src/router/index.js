@@ -27,7 +27,7 @@ const router = createRouter({
                 {
                     path: '/chatpage',
                     name: 'chatpage',
-                    component: () => import('@/views/pages/ChatPage.vue')
+                    component: () => import('@/views/pages/Dify_chat.vue')
                 },
                 {
                     path: '/api_chat',

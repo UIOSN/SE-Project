@@ -4,7 +4,6 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { exec } = require('child_process');
-
 const env = {...process.env, PYTHONIOENCODING: 'utf-8'};
 const app = express();
 
@@ -770,6 +769,58 @@ app.get('/api/user/favorites/check/:schoolId', async (req, res) => {
   }
 });
 
+// 代理Dify的流式API
+app.post('/api/chat-stream', async (req, res) => {
+  const { query, conversation_id } = req.body;
+
+  // 设置SSE响应头
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  
+  // Express 5+ 可以直接调用 flushHeaders()，4.x 需要手动写入头部
+  if (typeof res.flushHeaders === 'function') {
+    res.flushHeaders();
+  } else {
+    res.writeHead(200);
+  }
+
+  try {
+    const difyResponse = await fetch('https://api.dify.ai/v1/chat-messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer app-KQzeyVHErZDnb0Pv0VQvnz0L',
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
+      },
+      body: JSON.stringify({
+        inputs: {},
+        query,
+        response_mode: "streaming",
+        conversation_id,
+        user: "abc-123"
+      })
+    });
+
+    if (!difyResponse.ok) {
+      throw new Error(`Dify API错误: ${difyResponse.status}`);
+    }
+
+    const reader = difyResponse.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      // 直接写入二进制数据块（不再调用flush）
+      res.write(value);
+    }
+  } catch (err) {
+    console.error('代理错误:', err);
+    res.write(`event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`);
+  } finally {
+    res.end();
+  }
+});
 app.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
 });

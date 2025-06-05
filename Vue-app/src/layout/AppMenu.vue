@@ -14,7 +14,8 @@ const model = ref([
         items: [
             { label: '介绍页', icon: 'pi pi-fw pi-home', to: '/' },
             { label: '考生信息填写', icon: 'pi pi-fw pi-id-card', to: '/info' },
-            { label: 'AI志愿助手', icon: 'pi pi-fw pi-microchip-ai', to: '/chat' },
+            { label: 'AI志愿助手(blocking)', icon: 'pi pi-fw pi-microchip-ai', to: '/chat' },
+            {label: 'AI志愿助手(streaming)', icon: 'pi pi-fw pi-microchip-ai', to: '/api_chat'},
             { label: '我的志愿表', icon: 'pi pi-fw pi-bookmark', to: '/mylist' },
             // { label: '院校详情', icon: 'pi pi-fw pi-graduation-cap', to: '/school_info' },
             { label: '院校查询', icon: 'pi pi-fw pi-graduation-cap', to: '/search' },
