@@ -693,7 +693,6 @@ const formatDate = (dateString) => {
             <template #header>
               <div class="university-header">
                 <div class="university-avatar-wrapper">
-                  <!-- 直接使用img标签，与SearchDoc.vue保持一致 -->
                   <img 
                     :src="uni.logo" 
                     :alt="uni.school_name + ' logo'" 
@@ -710,71 +709,61 @@ const formatDate = (dateString) => {
                     <i class="pi pi-map-marker"></i>
                     {{ uni.province_name }}
                   </p>
-                  <div class="flex flex-wrap gap-2">
-                <Tag 
-                  v-for="tag in uni.tags" 
-                  :key="tag"
-                  :value="tag"
-                  :severity="tagSeverity[tag]"
-                  :rounded="true"
-                  class="university-tag"
-                />
-              </div>
+                  <!-- 只保留这一个标签显示 -->
+                  <div class="university-tags">
+                    <Tag 
+                      v-for="tag in uni.tags" 
+                      :key="tag"
+                      :value="tag"
+                      :severity="tagSeverity[tag]"
+                      class="university-tag"
+                    >
+                      <template #default>
+                        <i class="pi pi-star-fill tag-icon"></i>
+                        {{ tag }}
+                      </template>
+                    </Tag>
+                    
+                    <!-- 如果没有985/211标签，显示学校类型 -->
+                    <Tag 
+                      v-if="uni.tags.length === 0 && uni.school_type"
+                      :value="uni.school_type"
+                      severity="secondary"
+                      class="university-tag"
+                    >
+                      <template #default>
+                        <i class="pi pi-building tag-icon"></i>
+                        {{ uni.school_type }}
+                      </template>
+                    </Tag>
+                  </div>
                 </div>
               </div>
             </template>
             
             <template #content>
-              <!-- <div class="university-content"> -->
-                <!-- 院校标签 -->
-                
-                  
-                <div class="university-tags">
-                  <Tag 
-                    v-for="tag in uni.tags" 
-                    :key="tag"
-                    :value="tag"
-                    :severity="tagSeverity[tag]"
-                    class="university-tag"
-                  >
-                    <template #default>
-                      <i class="pi pi-star-fill tag-icon"></i>
-                      {{ tag }}
-                    </template>
-                  </Tag>
+              <!-- 移除所有重复的标签显示代码 -->
+              <!-- 可以在这里添加其他内容，比如院校统计信息 -->
+              <div v-if="uni.score || uni.rank" class="university-stats">
+                <div v-if="uni.score" class="stat-box score-stat">
+                  <div class="stat-icon-small">
+                    <i class="pi pi-chart-line"></i>
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-value">{{ uni.score }}分</div>
+                    <div class="stat-desc">最低分数线</div>
+                  </div>
                 </div>
-                <!-- 院校标签 -->
-              <div class="flex flex-wrap gap-2">
-                <Tag 
-                  v-for="tag in uni.tags" 
-                  :key="tag"
-                  :value="tag"
-                  :severity="tagSeverity[tag]"
-                  :rounded="true"
-                />
+                <div v-if="uni.rank" class="stat-box rank-stat">
+                  <div class="stat-icon-small">
+                    <i class="pi pi-trophy"></i>
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-value">第{{ uni.rank }}名</div>
+                    <div class="stat-desc">全国排名</div>
+                  </div>
+                </div>
               </div>
-                <!-- 院校数据
-                <div class="university-stats">
-                  <div v-if="uni.score" class="stat-box score-stat">
-                    <div class="stat-icon-small">
-                      <i class="pi pi-chart-line"></i>
-                    </div>
-                    <div class="stat-info">
-                      <div class="stat-value">{{ uni.score }}分</div>
-                      <div class="stat-desc">最低分数线</div>
-                    </div>
-                  </div>
-                  <div v-if="uni.rank" class="stat-box rank-stat">
-                    <div class="stat-icon-small">
-                      <i class="pi pi-trophy"></i>
-                    </div>
-                    <div class="stat-info">
-                      <div class="stat-value">第{{ uni.rank }}名</div>
-                      <div class="stat-desc">全国排名</div>
-                    </div>
-                  </div>
-                </div> -->
-              <!-- </div> -->
             </template>
 
             <template #footer>

@@ -225,6 +225,16 @@ const submitWishlist = async () => {
   }
 };
 
+// 获取类别中文名
+const getCategoryName = (category) => {
+  const names = {
+    rush: '冲刺院校',
+    stable: '稳妥院校',
+    safe: '保底院校'
+  };
+  return names[category] || category;
+};
+
 // 计算录取概率
 const calculateChance = (univ) => {
   if (!hasUserInfo.value || !userScore.value || !univ.score) {
@@ -246,16 +256,6 @@ const calculateChance = (univ) => {
   else if (rankDiff > 1000) chance -= 5;
   
   return Math.min(95, Math.max(5, chance)) + '%';
-};
-
-// 获取类别中文名
-const getCategoryName = (category) => {
-  const names = {
-    rush: '冲刺院校',
-    stable: '稳妥院校',
-    safe: '保底院校'
-  };
-  return names[category] || category;
 };
 
 // 组件挂载时加载数据
@@ -284,7 +284,7 @@ onMounted(async () => {
         <div class="text-surface-500 mb-4">
           <i class="pi pi-info-circle text-3xl"></i>
         </div>
-        <p class="text-surface-600 mb-4">请先完善个人信息，以便更好地评估录取概率</p>
+        <p class="text-surface-600 mb-4">请先完善个人信息</p>
         <router-link to="/info">
           <Button label="去完善信息" icon="pi pi-arrow-right" />
         </router-link>
@@ -297,20 +297,22 @@ onMounted(async () => {
       <p class="mt-4 text-surface-600">正在加载志愿表...</p>
     </div>
     
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- 修改这里：增加等高约束和滚动 -->
+    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="align-items: start;">
       <!-- 冲一冲 -->
-      <div class="card">
+      <div class="card wishlist-card">
         <div class="bg-blue-100 dark:bg-blue-900 p-4 rounded-t-lg">
           <div class="flex justify-between items-center">
             <h3 class="font-bold text-lg text-blue-800 dark:text-blue-200">冲一冲</h3>
             <Tag :value="`${universities.rush.length}/10所`" severity="info" />
           </div>
           <div class="text-sm text-blue-600 dark:text-blue-300 mt-1">
-            录取概率20%-40%，建议3-5所
+            分数高于往年分数线，建议3-5所
           </div>
         </div>
-        <div class="p-4 min-h-[400px]">
-          <div v-if="universities.rush.length === 0" class="text-center py-8">
+        <!-- 修改这里：添加滚动容器 -->
+        <div class="wishlist-content">
+          <div v-if="universities.rush.length === 0" class="empty-state">
             <div class="text-surface-400 mb-4">
               <i class="pi pi-inbox text-4xl"></i>
             </div>
@@ -324,7 +326,7 @@ onMounted(async () => {
             />
           </div>
           
-          <div v-else>
+          <div v-else class="wishlist-items">
             <div v-for="(item, index) in universities.rush" :key="item.school_id" 
                  class="p-4 border-round border-1 surface-border mb-3">
               <div class="flex gap-4">
@@ -337,6 +339,9 @@ onMounted(async () => {
                 <div class="flex-1">
                   <div class="font-bold">{{ item.school_name }}</div>
                   <div class="text-sm text-surface-500 mt-1">
+                    <i class="pi pi-map-marker mr-1"></i>{{ item.province_name }}
+                  </div>
+                  <div v-if="item.score || item.rank" class="text-sm text-surface-500 mt-1">
                     <span v-if="item.score">去年分数线: {{ item.score }}分</span>
                     <span v-if="item.rank"> · 排名: 第{{ item.rank }}名</span>
                   </div>
@@ -348,16 +353,11 @@ onMounted(async () => {
                       :severity="tag === '985' ? 'warn' : tag === '211' ? 'info' : 'secondary'"
                       size="small"
                     />
-                  </div>
-                  <div class="mt-2">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span>录取概率</span>
-                      <span class="font-semibold">{{ calculateChance(item) }}</span>
-                    </div>
-                    <ProgressBar 
-                      :value="parseInt(calculateChance(item))" 
-                      :showValue="false" 
-                      style="height: 6px"
+                    <Tag 
+                      v-if="item.tags.length === 0 && item.school_type"
+                      :value="item.school_type"
+                      severity="secondary"
+                      size="small"
                     />
                   </div>
                 </div>
@@ -379,31 +379,34 @@ onMounted(async () => {
                 />
               </div>
             </div>
-            <Button 
-              icon="pi pi-plus" 
-              label="添加更多" 
-              @click="addToWishlist('rush')"
-              class="w-full mt-2" 
-              outlined
-              :disabled="universities.rush.length >= 10"
-            />
+            <!-- 添加更多按钮固定在底部 -->
+            <div class="add-more-btn">
+              <Button 
+                icon="pi pi-plus" 
+                label="添加更多" 
+                @click="addToWishlist('rush')"
+                class="w-full" 
+                outlined
+                :disabled="universities.rush.length >= 10"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       <!-- 稳一稳 -->
-      <div class="card">
+      <div class="card wishlist-card">
         <div class="bg-green-100 dark:bg-green-900 p-4 rounded-t-lg">
           <div class="flex justify-between items-center">
             <h3 class="font-bold text-lg text-green-800 dark:text-green-200">稳一稳</h3>
             <Tag :value="`${universities.stable.length}/15所`" severity="success" />
           </div>
           <div class="text-sm text-green-600 dark:text-green-300 mt-1">
-            录取概率40%-70%，建议5-8所
+            分数接近往年分数线，建议5-8所
           </div>
         </div>
-        <div class="p-4 min-h-[400px]">
-          <div v-if="universities.stable.length === 0" class="text-center py-8">
+        <div class="wishlist-content">
+          <div v-if="universities.stable.length === 0" class="empty-state">
             <div class="text-surface-400 mb-4">
               <i class="pi pi-inbox text-4xl"></i>
             </div>
@@ -417,7 +420,7 @@ onMounted(async () => {
             />
           </div>
           
-          <div v-else>
+          <div v-else class="wishlist-items">
             <div v-for="(item, index) in universities.stable" :key="item.school_id" 
                  class="p-4 border-round border-1 surface-border mb-3">
               <div class="flex gap-4">
@@ -430,6 +433,9 @@ onMounted(async () => {
                 <div class="flex-1">
                   <div class="font-bold">{{ item.school_name }}</div>
                   <div class="text-sm text-surface-500 mt-1">
+                    <i class="pi pi-map-marker mr-1"></i>{{ item.province_name }}
+                  </div>
+                  <div v-if="item.score || item.rank" class="text-sm text-surface-500 mt-1">
                     <span v-if="item.score">去年分数线: {{ item.score }}分</span>
                     <span v-if="item.rank"> · 排名: 第{{ item.rank }}名</span>
                   </div>
@@ -441,16 +447,11 @@ onMounted(async () => {
                       :severity="tag === '985' ? 'warn' : tag === '211' ? 'info' : 'secondary'"
                       size="small"
                     />
-                  </div>
-                  <div class="mt-2">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span>录取概率</span>
-                      <span class="font-semibold">{{ calculateChance(item) }}</span>
-                    </div>
-                    <ProgressBar 
-                      :value="parseInt(calculateChance(item))" 
-                      :showValue="false" 
-                      style="height: 6px"
+                    <Tag 
+                      v-if="item.tags.length === 0 && item.school_type"
+                      :value="item.school_type"
+                      severity="secondary"
+                      size="small"
                     />
                   </div>
                 </div>
@@ -479,31 +480,33 @@ onMounted(async () => {
                 />
               </div>
             </div>
-            <Button 
-              icon="pi pi-plus" 
-              label="添加更多" 
-              @click="addToWishlist('stable')"
-              class="w-full mt-2" 
-              outlined
-              :disabled="universities.stable.length >= 15"
-            />
+            <div class="add-more-btn">
+              <Button 
+                icon="pi pi-plus" 
+                label="添加更多" 
+                @click="addToWishlist('stable')"
+                class="w-full" 
+                outlined
+                :disabled="universities.stable.length >= 15"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       <!-- 保一保 -->
-      <div class="card">
+      <div class="card wishlist-card">
         <div class="bg-orange-100 dark:bg-orange-900 p-4 rounded-t-lg">
           <div class="flex justify-between items-center">
             <h3 class="font-bold text-lg text-orange-800 dark:text-orange-200">保一保</h3>
             <Tag :value="`${universities.safe.length}/10所`" severity="warn" />
           </div>
           <div class="text-sm text-orange-600 dark:text-orange-300 mt-1">
-            录取概率70%+，建议2-4所
+            分数低于往年分数线，建议2-4所
           </div>
         </div>
-        <div class="p-4 min-h-[400px]">
-          <div v-if="universities.safe.length === 0" class="text-center py-8">
+        <div class="wishlist-content">
+          <div v-if="universities.safe.length === 0" class="empty-state">
             <div class="text-surface-400 mb-4">
               <i class="pi pi-inbox text-4xl"></i>
             </div>
@@ -517,7 +520,7 @@ onMounted(async () => {
             />
           </div>
           
-          <div v-else>
+          <div v-else class="wishlist-items">
             <div v-for="(item, index) in universities.safe" :key="item.school_id" 
                  class="p-4 border-round border-1 surface-border mb-3">
               <div class="flex gap-4">
@@ -530,6 +533,9 @@ onMounted(async () => {
                 <div class="flex-1">
                   <div class="font-bold">{{ item.school_name }}</div>
                   <div class="text-sm text-surface-500 mt-1">
+                    <i class="pi pi-map-marker mr-1"></i>{{ item.province_name }}
+                  </div>
+                  <div v-if="item.score || item.rank" class="text-sm text-surface-500 mt-1">
                     <span v-if="item.score">去年分数线: {{ item.score }}分</span>
                     <span v-if="item.rank"> · 排名: 第{{ item.rank }}名</span>
                   </div>
@@ -541,16 +547,11 @@ onMounted(async () => {
                       :severity="tag === '985' ? 'warn' : tag === '211' ? 'info' : 'secondary'"
                       size="small"
                     />
-                  </div>
-                  <div class="mt-2">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span>录取概率</span>
-                      <span class="font-semibold">{{ calculateChance(item) }}</span>
-                    </div>
-                    <ProgressBar 
-                      :value="parseInt(calculateChance(item))" 
-                      :showValue="false" 
-                      style="height: 6px"
+                    <Tag 
+                      v-if="item.tags.length === 0 && item.school_type"
+                      :value="item.school_type"
+                      severity="secondary"
+                      size="small"
                     />
                   </div>
                 </div>
@@ -572,20 +573,22 @@ onMounted(async () => {
                 />
               </div>
             </div>
-            <Button 
-              icon="pi pi-plus" 
-              label="添加更多" 
-              @click="addToWishlist('safe')"
-              class="w-full mt-2" 
-              outlined
-              :disabled="universities.safe.length >= 10"
-            />
+            <div class="add-more-btn">
+              <Button 
+                icon="pi pi-plus" 
+                label="添加更多" 
+                @click="addToWishlist('safe')"
+                class="w-full" 
+                outlined
+                :disabled="universities.safe.length >= 10"
+              />
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 操作按钮 -->
+    <!-- 操作按钮区域保持不变 -->
     <div class="card p-4">
       <div class="flex justify-between items-center mb-4">
         <div class="flex items-center gap-4">
@@ -638,11 +641,98 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* 保持与模板一致的卡片样式 */
+/* 基础卡片样式 */
 .card {
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* 志愿卡片特殊样式 */
+.wishlist-card {
+  display: flex;
+  flex-direction: column;
+  height: 600px; /* 固定总高度 */
+}
+
+/* 内容区域 */
+.wishlist-content {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 防止溢出 */
+}
+
+/* 空状态居中 */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+/* 院校列表容器 */
+.wishlist-items {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 院校列表滚动区域 */
+.wishlist-items > *:not(.add-more-btn) {
+  flex-shrink: 0; /* 防止院校卡片被压缩 */
+}
+
+/* 如果内容超出，添加滚动 */
+.wishlist-items {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-300) transparent;
+}
+
+/* Webkit浏览器滚动条样式 */
+.wishlist-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.wishlist-items::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wishlist-items::-webkit-scrollbar-thumb {
+  background-color: var(--surface-300);
+  border-radius: 3px;
+}
+
+.wishlist-items::-webkit-scrollbar-thumb:hover {
+  background-color: var(--surface-400);
+}
+
+/* 添加更多按钮固定在底部 */
+.add-more-btn {
+  margin-top: auto;
+  padding-top: 1rem;
+  flex-shrink: 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 1024px) {
+  .wishlist-card {
+    height: auto; /* 移动端不固定高度 */
+    min-height: 400px;
+  }
+  
+  .wishlist-content {
+    overflow: visible; /* 移动端不限制溢出 */
+  }
+  
+  .wishlist-items {
+    overflow-y: visible; /* 移动端不滚动 */
+  }
 }
 </style>

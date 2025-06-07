@@ -1,13 +1,12 @@
 <script setup>
-import { ref ,onMounted,watch} from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useRouter } from 'vue-router';
 
 const toast = useToast();
 const router = useRouter();
-const conversationId = ref(''); // 用于跟踪会话ID
-// 表单数据
 
+// 表单数据
 const formData = ref({
   name: '',
   score: null,
@@ -20,21 +19,10 @@ const formData = ref({
   remarks: ''
 });
 
+// 保存状态
+const isSaving = ref(false);
 
-// 加载表单数据
-onMounted(() => {
-  const savedData = localStorage.getItem('formData');
-  if (savedData) {
-    formData.value = JSON.parse(savedData); // 从 localStorage 加载数据
-  }
-});
-
-// 监听表单数据变化并保存到 localStorage
-watch(formData, (newValue) => {
-  localStorage.setItem('formData', JSON.stringify(newValue)); // 保存数据到 localStorage
-}, { deep: true });
-
-// 选项数据
+// 选项数据（保持不变）
 const regions = ref([
   { name: '北京', code: 'BJ' },
   { name: '天津', code: 'TJ' },
@@ -73,7 +61,6 @@ const regions = ref([
 ]);
 
 const subjects = ref([
-
   { name: '物理', code: 'WL' },
   { name: '化学', code: 'HX' },
   { name: '生物', code: 'SW' },
@@ -127,7 +114,8 @@ const majors = ref([
   { name: '数据科学与大数据技术', code: 'DS' }
 ]);
 
-const handleSubmit = async () => {
+// 保存信息函数（不跳转）
+const handleSave = async () => {
   // 表单验证
   if (!formData.value.name || !formData.value.score || !formData.value.region) {
     toast.add({
@@ -138,6 +126,8 @@ const handleSubmit = async () => {
     });
     return;
   }
+
+  isSaving.value = true;
 
   try {
     // 获取用户token
@@ -178,32 +168,53 @@ const handleSubmit = async () => {
     if (result.success) {
       toast.add({
         severity: 'success',
-        summary: '成功',
-        detail: '信息保存成功！',
+        summary: '保存成功',
+        detail: '您的信息已成功保存！',
         life: 3000
       });
 
-      // 仍保存到localStorage作为备份
+      // 保存到localStorage作为备份
       localStorage.setItem('formData', JSON.stringify(formData.value));
 
-      // 生成AI提示词并跳转到Chat页面
-      const prompt = generatePrompt();
-      router.push({
-        path: '/chat',
-        query: { prompt: prompt }
-      });
+      console.log('信息保存成功，用户可以在聊天页面获得智能建议');
     } else {
       throw new Error(result.message);
     }
   } catch (error) {
-    console.error('提交失败:', error);
+    console.error('保存失败:', error);
     toast.add({
       severity: 'error',
-      summary: '提交失败',
+      summary: '保存失败',
       detail: error.message || '网络错误，请重试',
       life: 3000
     });
+  } finally {
+    isSaving.value = false;
   }
+};
+
+// 生成志愿填报方案并跳转到Chat页面
+const generatePlan = async () => {
+  // 先检查信息是否完整
+  if (!formData.value.name || !formData.value.score || !formData.value.region) {
+    toast.add({
+      severity: 'warn',
+      summary: '信息不完整',
+      detail: '请先完善基本信息（姓名、分数、地区）后再生成方案',
+      life: 3000
+    });
+    return;
+  }
+
+  // 先保存信息
+  await handleSave();
+
+  // 生成AI提示词并跳转到Chat页面
+  const prompt = generatePrompt();
+  router.push({
+    path: '/chat',
+    query: { prompt: prompt }
+  });
 };
 
 // 生成AI提示词的辅助函数
@@ -241,6 +252,11 @@ const generatePrompt = () => {
     `意向地区: ${preferredRegions.join(', ') || '未选择'}, ` +
     `备注信息: ${formData.value.remarks || '无'}`;
 };
+
+// 监听表单数据变化并保存到 localStorage
+watch(formData, (newValue) => {
+  localStorage.setItem('formData', JSON.stringify(newValue));
+}, { deep: true });
 
 // 在组件挂载时从数据库读取信息
 onMounted(async () => {
@@ -280,17 +296,14 @@ onMounted(async () => {
     
     <!-- 基本信息 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- <FloatLabel>
-        <InputIcon class="pi pi-user" />
-        <InputText id="name" type="text" v-model="formData.name" />
-        
-        <label for="name">学生姓名</label>
-      </FloatLabel> -->
       <IconField>
-          <InputIcon class="pi pi-user" />
-          <!-- <InputText type="text" placeholder="考生姓名" /> -->
-          <InputText id="name" type="text" v-model="formData.name" placeholder="考生姓名" />
-
+        <InputIcon class="pi pi-user" />
+        <InputText 
+          id="name" 
+          type="text" 
+          v-model="formData.name" 
+          placeholder="考生姓名" 
+        />
       </IconField>
       
       <FloatLabel>
@@ -309,7 +322,6 @@ onMounted(async () => {
     <!-- 地区选择 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-7">
       <div>
-        <!-- <label class="block font-medium mb-2">所在地区</label> -->
         <Dropdown 
           v-model="formData.region" 
           :options="regions" 
@@ -398,20 +410,45 @@ onMounted(async () => {
         placeholder="请输入其他需要说明的信息" 
         :autoResize="true" 
         rows="5"
-        class = "w-full"
+        class="w-full"
       />
     </div>
     
-    <!-- 提交按钮 -->
-    <div class="flex justify-end mt-4">
-      <!-- <router-link to = "/chat"> -->
-        <Button 
-          label="一键生成志愿填报方案" 
-          icon="pi pi-check" 
-          @click="handleSubmit"
-          class="w-full md:w-auto"
-        />
-      <!-- </router-link> -->
+    <!-- 操作按钮 -->
+    <div class="flex gap-3 justify-end mt-4">
+      <!-- 保存信息按钮 -->
+      <Button 
+        label="保存信息" 
+        icon="pi pi-save" 
+        @click="handleSave"
+        :loading="isSaving"
+        severity="secondary"
+        class="md:w-auto"
+      />
+      
+      <!-- 生成志愿填报方案按钮 -->
+      <Button 
+        label="一键生成志愿填报方案" 
+        icon="pi pi-magic-wand" 
+        @click="generatePlan"
+        :disabled="isSaving"
+        class="md:w-auto"
+      />
+    </div>
+
+    <!-- 提示信息 -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+      <div class="flex items-start gap-3">
+        <i class="pi pi-info-circle text-blue-500 mt-1"></i>
+        <div class="text-blue-700">
+          <p class="font-medium mb-1">温馨提示：</p>
+          <ul class="text-sm space-y-1">
+            <li>• 点击"保存信息"仅保存您的个人信息</li>
+            <li>• 点击"一键生成志愿填报方案"会自动保存信息并跳转到AI助手为您生成个性化建议</li>
+            <li>• 建议先完善所有信息后再生成方案，以获得更准确的建议</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </template>
