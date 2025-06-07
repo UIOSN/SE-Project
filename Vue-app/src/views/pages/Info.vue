@@ -2,6 +2,8 @@
 import { ref, onMounted, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useRouter } from 'vue-router';
+// 添加事件总线导入
+import { eventBus } from '@/utils/eventBus';
 
 const toast = useToast();
 const router = useRouter();
@@ -114,7 +116,7 @@ const majors = ref([
   { name: '数据科学与大数据技术', code: 'DS' }
 ]);
 
-// 保存信息函数（不跳转）
+// 保存信息函数（修改版）
 const handleSave = async () => {
   // 表单验证
   if (!formData.value.name || !formData.value.score || !formData.value.region) {
@@ -176,6 +178,12 @@ const handleSave = async () => {
       // 保存到localStorage作为备份
       localStorage.setItem('formData', JSON.stringify(formData.value));
 
+      // ✨ 关键修改：发布用户信息更新事件
+      eventBus.emit('userInfoUpdated', {
+        userFormData: formData.value,
+        timestamp: Date.now()
+      });
+
       console.log('信息保存成功，用户可以在聊天页面获得智能建议');
     } else {
       throw new Error(result.message);
@@ -193,7 +201,7 @@ const handleSave = async () => {
   }
 };
 
-// 生成志愿填报方案并跳转到Chat页面
+// 生成志愿填报方案并跳转到Chat页面（修改版）
 const generatePlan = async () => {
   // 先检查信息是否完整
   if (!formData.value.name || !formData.value.score || !formData.value.region) {
@@ -209,12 +217,15 @@ const generatePlan = async () => {
   // 先保存信息
   await handleSave();
 
-  // 生成AI提示词并跳转到Chat页面
-  const prompt = generatePrompt();
-  router.push({
-    path: '/chat',
-    query: { prompt: prompt }
-  });
+  // ✨ 只有在保存成功后才跳转
+  if (isSaving.value === false) {
+    // 生成AI提示词并跳转到Chat页面
+    const prompt = generatePrompt();
+    router.push({
+      path: '/chat',
+      query: { prompt: prompt }
+    });
+  }
 };
 
 // 生成AI提示词的辅助函数

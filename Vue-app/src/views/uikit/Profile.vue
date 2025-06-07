@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useRouter } from 'vue-router';
+// 添加事件总线导入
+import { eventBus } from '@/utils/eventBus';
 
 const toast = useToast();
 const router = useRouter();
@@ -170,7 +172,7 @@ const universities = ref([
 ]);
 
 // 加载用户信息
-onMounted(async () => {
+const loadUserProfile = async () => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -247,7 +249,7 @@ onMounted(async () => {
       user.value.profile.location = getRegionName(data.region) || '未填写';
     }
   }
-});
+};
 
 // 加载收藏列表
 const loadFavorites = async () => {
@@ -366,6 +368,54 @@ const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   return new Date(dateString).toLocaleDateString('zh-CN', options);
 };
+
+// ✨ 监听用户信息更新事件
+const handleUserInfoUpdate = (eventData) => {
+  console.log('收到用户信息更新事件:', eventData);
+  
+  // 直接更新本地数据（快速响应）
+  if (eventData.userFormData) {
+    userFormData.value = eventData.userFormData;
+    user.value.profile.realName = eventData.userFormData.name;
+    user.value.profile.location = getRegionName(eventData.userFormData.region);
+  }
+  
+  // 同时从服务器重新获取最新数据（确保一致性）
+  setTimeout(() => {
+    loadUserProfile();
+  }, 100); // 短暂延迟确保服务器数据已更新
+};
+
+let lastCheckTime = ref(0);
+
+// 组件挂载时加载数据
+onMounted(async () => {
+  console.log('🚀 Profile页面：组件挂载，开始加载数据');
+  
+  await loadUserProfile();
+  
+  // ✨ 简单粗暴的轮询检查
+  const checkForUpdates = () => {
+    const lastUpdated = localStorage.getItem('userInfoLastUpdated');
+    if (lastUpdated && Number(lastUpdated) > lastCheckTime.value) {
+      console.log('🔄 检测到数据更新，重新加载');
+      lastCheckTime.value = Number(lastUpdated);
+      loadUserProfile();
+    }
+  };
+  
+  // 每秒检查一次
+  const intervalId = setInterval(checkForUpdates, 1000);
+  
+  onUnmounted(() => {
+    clearInterval(intervalId);
+  });
+});
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+  eventBus.off('userInfoUpdated', handleUserInfoUpdate);
+});
 </script>
 
 <template>
