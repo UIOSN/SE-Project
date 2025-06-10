@@ -375,7 +375,7 @@ function onTagsChange(val) {
       </div>
 
       <!-- 排序 -->
-      <div>
+      <!-- <div>
         <label class="block font-medium mb-2">排序方式</label>
         <Dropdown
           v-model="sortBy"
@@ -387,7 +387,7 @@ function onTagsChange(val) {
           optionValue="value"
           class="w-full md:w-40"
         />
-      </div>
+      </div> -->
     </div>
 
     <!-- 院校列表 -->
