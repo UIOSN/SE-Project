@@ -53,7 +53,7 @@ const login = async () => {
             });
             
             // 跳转到主页面
-            router.push('/main');
+            router.push('/profile');
         } else {
             toast.add({
                 severity: 'error',
