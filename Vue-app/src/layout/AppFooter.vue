@@ -2,7 +2,8 @@
 
 <template>
     <div class="layout-footer">
-        张小峰 by
-        <a href="https://primevue.org" target="_blank" rel="noopener noreferrer" class="text-primary font-bold hover:underline">PrimeVue</a>
+        张小峰©
+
+        <a href="https://www.sysu.edu.cn/" target="_blank" rel="noopener noreferrer" class="text-primary font-bold hover:underline">SYSU-2025</a>
     </div>
 </template>

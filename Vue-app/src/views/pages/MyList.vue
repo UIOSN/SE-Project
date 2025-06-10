@@ -608,13 +608,13 @@ onMounted(async () => {
             severity="secondary"
             @click="router.push('/search')"
           />
-          <Button 
+          <!-- <Button 
             icon="pi pi-print" 
             label="打印志愿表" 
             severity="info"
             outlined
             @click="window.print()"
-          />
+          /> -->
           <Button 
             icon="pi pi-check" 
             label="提交志愿表" 
