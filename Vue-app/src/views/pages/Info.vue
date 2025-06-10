@@ -221,8 +221,9 @@ const generatePlan = async () => {
   if (isSaving.value === false) {
     // 生成AI提示词并跳转到Chat页面
     const prompt = generatePrompt();
+    console.log("prompt:", prompt);
     router.push({
-      path: '/chat',
+      path: '/api_chat',
       query: { prompt: prompt }
     });
   }

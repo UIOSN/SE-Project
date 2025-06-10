@@ -38,16 +38,6 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
-                <!--div class="relative">视觉风格配置器（删掉了）
-                    <button
-                        v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-                        type="button"
-                        class="layout-topbar-action layout-topbar-action-highlight"
-                    >
-                        <i class="pi pi-palette"></i>
-                    </button>
-                    <AppConfigurator />
-                </div--> 
             </div>
 
             <button
@@ -59,15 +49,8 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
             <!-- 顶部三个点的目录-->
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
-                    </button>
-                    <router-link to="/uikit/profile" custom v-slot="{ navigate }">
+                    
+                    <router-link to="/profile" custom v-slot="{ navigate }">
                         <button 
                             type="button" 
                             class="layout-topbar-action" 

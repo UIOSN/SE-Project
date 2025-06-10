@@ -140,9 +140,9 @@ const scrollToBottom = () => {
 
 // 快捷提问
 const quickQuestions = ref([
-  '如何提高志愿填报成功率？',
   '生成志愿填报方案',
-  '院校排名查询'
+  '如何提高志愿填报成功率？',
+  '院校信息查询'
 ]);
 
 const askQuickQuestion = (question) => {
